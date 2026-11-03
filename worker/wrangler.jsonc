@@ -1,0 +1,13 @@
+{
+  "name": "bot-datsan-storage",
+  "main": "src/index.mjs",
+  "compatibility_date": "2025-10-01",
+  "workers_dev": true,
+  "observability": {"enabled": false},
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "bot-datsan-monitor-db",
+    "database_id": "REPLACE_LOCALLY_WITH_EXISTING_DATABASE_ID",
+    "migrations_dir": "migrations"
+  }]
+}

@@ -1,0 +1,49 @@
+name: Offline package validation (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: datsan-offline-validation
+  cancel-in-progress: false
+env:
+  WRANGLER_SEND_METRICS: 'false'
+  DEBUG: ''
+  PWDEBUG: ''
+  MONITOR_API_URL: ''
+  MONITOR_API_SECRET: ''
+  TELEGRAM_BOT_TOKEN: ''
+  TELEGRAM_TEST_CHAT_ID: ''
+  CLOUDFLARE_API_TOKEN: ''
+  CLOUDFLARE_ACCOUNT_ID: ''
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.2'
+      - run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.lock
+      - run: python -m playwright install --with-deps chromium
+      - run: npm ci --ignore-scripts
+        working-directory: worker
+      - run: python tools/audit_public.py
+      - run: python -m unittest tests.test_deployment tests.test_collector_dom tests.test_release_safety -v
+      - run: python -m monitor.runtime --dry-run
+      - run: node --test --test-timeout=120000 test/api.test.mjs test/miniflare.test.mjs
+        working-directory: worker
+      - name: Full lifecycle contract against actual local D1 (no shim fallback)
+        env:
+          MONITOR_TEST_STORAGE: workerd
+        run: python -m unittest tests.test_deployment.Integration -fv
+      - name: Worker bundle only (no deployment)
+        working-directory: worker
+        run: node node_modules/wrangler/bin/wrangler.js deploy --dry-run --outdir artifacts/build

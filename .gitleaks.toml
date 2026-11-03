@@ -1,0 +1,12 @@
+title = "DatSan public release: default detection with verified manifest hashes"
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+  [[rules.allowlists]]
+  description = "Only SHA-256 values in the integrity-checked public manifest"
+  condition = "AND"
+  paths = ['''(^|/)PUBLIC_MANIFEST\.json$''']
+  regexTarget = "secret"
+  regexes = ['''^[a-f0-9]{64}$''']

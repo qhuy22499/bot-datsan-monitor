@@ -1,0 +1,33 @@
+{
+  "generator": "AST allowlist v1; import/parser substitution only",
+  "sources": {
+    "poc05_domain.py": "995100acb26504db07d0ace4e86cf0592b315d82096da4cb47ce88d23ff279fb",
+    "poc05_repository.py": "6620f072ad3fcbf6527993c3009ac6f697ea57fde3f3371b6f408816531c93f8",
+    "poc06_domain.py": "a5ff1d819e84510d71136381ab86ac3f4715b405c8cf141a7686006d38c88c92",
+    "availability_status.py": "d5a9e09ec6027585258175345adcb0088e517a300ef0397dc96a4de326f56a30",
+    "poc_read_slots.py": "031097a4c51c4abb73ea7778704cebe4fe8f6b45556fa3d566bf35850ed67135",
+    "poc06_status.py": "0a1571746c4b9d6873719925a1d2c63e714876b7ebe7a23f2d98371c6718a01a",
+    "poc06_collector.py": "1df0f4a0d88c65ddafb3f0a91325736a56056f59035b6ea06843c8722cea3842",
+    "poc10_mvp_scope.py": "bd82533e49c86a60eabdf868e295419e1224969cdd11491ed1f6dbfb8a3bec67",
+    "poc10_mvp_collector.py": "7a25fa65d5be81aeaf858c13085bc3db13c21394d0bff587c1f28594a8fdddbc",
+    "poc10_rules.py": "57a7b4323656d717aa8f12f38b497e60051023fc97217dea6dca7678bbe87a67",
+    "poc07_telegram.py": "062a71b6b210225b55e21d94e387378114930fed2e2186136cdd8bad1ff02a98",
+    "poc06_e2e_availability.js": "761cd77a3ff7825cd7ffb27125c64092f3a39bcd0244c845890687ab65ff45e1",
+    "poc10_mvp_notifications.py": "479ed5cee2f0f1311cda2038a204cee14181a9a121111728d5ddd173c6dc86dc"
+  },
+  "outputs": {
+    "monitor/shared/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "monitor/shared/availability_status.py": "bba779c533cc9d8ff4b7a8aaef6e54c77954e93d9d982ad6f688157694024b9b",
+    "monitor/shared/calendar.py": "f7b0980cbbb139ecc14e4682641248c18e9605f77087466aa2970d6b8b2989b6",
+    "monitor/shared/collector.py": "203ff22c6eade1bfff8e536905c98179c5b64eae65c497d8e9b84662bdb33ba7",
+    "monitor/shared/data/jp_holidays_2026_2027.json": "9940245a62b47005bddfc152b6f533ac7bcee4148006b1b08e7894b83488a616",
+    "monitor/shared/data/katsushika_sports_booking_policy.json": "f8d7fc4a5be4c1fa1b2bc6b1e2095ecca3eec535e19340052d43d012ff42a7af",
+    "monitor/shared/data/mvp_monitoring_config.json": "5f41c6694aa25edbdabb5aed9e8f8d968b78e3424752ec0845b3a88c66dc7df4",
+    "monitor/shared/domain.py": "ded497c2577b889dab9440df42aba222ba9fb603950c4840ae06c36d3aee438c",
+    "monitor/shared/formatting.py": "3f4e9d7ad44b3b89b9da079b72c525de3a4d0db68c82b4f810a8cd59e29fd7b6",
+    "monitor/shared/oracle.js": "761cd77a3ff7825cd7ffb27125c64092f3a39bcd0244c845890687ab65ff45e1",
+    "monitor/shared/reader.py": "9caa60d1fc66cb72dacb88ce05da303f99df66e16ee2c936dd8cc50e6e9693f0",
+    "monitor/shared/scope.py": "14ce20821ce92db05a05c1fcc32a7bff5d9b47ffe3e9df2c9112404f65991430",
+    "monitor/shared/telegram.py": "a2f52d5ff84e72324d4e93c44aab117200b3fc811d887b97b8fbba4ac8702658"
+  }
+}

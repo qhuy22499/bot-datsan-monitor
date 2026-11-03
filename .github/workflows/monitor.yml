@@ -1,0 +1,43 @@
+name: Public availability monitor (TEST, manual only)
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_test_delivery:
+        description: Only after separate deployment approval; permits TEST notifications
+        type: boolean
+        default: false
+  # Schedule OFF. Enable only after manual deployment acceptance.
+  # UTC 22:07..14:52 == JST 07:07..23:52, 68 runs/day, 15 minutes apart.
+  # schedule:
+  #   - cron: '7,22,37,52 22,23,0-14 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: katsushika-public-monitor-test
+  cancel-in-progress: false
+jobs:
+  monitor:
+    if: ${{ inputs.confirm_test_delivery }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - run: |
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
+      - run: python -m playwright install --with-deps chromium
+      - name: One-shot public scan and TEST delivery
+        env:
+          MONITOR_API_URL: ${{ secrets.MONITOR_API_URL }}
+          MONITOR_API_SECRET: ${{ secrets.MONITOR_API_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_TEST_CHAT_ID: ${{ secrets.TELEGRAM_TEST_CHAT_ID }}
+          TELEGRAM_DESTINATION: TEST
+          PYTHONDONTWRITEBYTECODE: '1'
+          DEBUG: ''
+          PWDEBUG: ''
+        run: python -m monitor.runtime --enable-test-delivery --baseline QUIET

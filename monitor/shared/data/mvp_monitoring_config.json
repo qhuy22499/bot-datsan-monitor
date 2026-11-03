@@ -1,0 +1,10 @@
+{
+  "schema_version": "mvp-monitoring-config-v1",
+  "interval_minutes": 15,
+  "website_opens_jst": "07:00",
+  "website_closes_jst": "24:00",
+  "hours_verified": true,
+  "hours_source": "https://www2.city.katsushika.lg.jp/tourism/1002753/1030217/1003234.html",
+  "hours_verified_on": "2026-10-31",
+  "maintenance": "Stop on website maintenance/unavailable markers; no automatic retry."
+}

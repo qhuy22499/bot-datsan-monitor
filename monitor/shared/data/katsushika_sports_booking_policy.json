@@ -1,0 +1,16 @@
+{
+  "schema_version": "poc10-mvp-booking-policy-v1",
+  "policy_id": "KATSUSHIKA_SPORTS_ONE_CALENDAR_MONTH_V1",
+  "verified_on": "2026-10-30",
+  "source_url": "https://www.city.katsushika.lg.jp/tourism/1002753/1030217/1003235.html",
+  "rule": "ONE_CALENDAR_MONTH_SAME_DAY",
+  "opening_time_jst": "07:00",
+  "opening_time_source": "https://spo.katsushika-web.net/group_guide/",
+  "opening_time_verified_on": "2026-10-31",
+  "missing_corresponding_day_rule": "UNVERIFIED",
+  "missing_corresponding_day_checked_on": "2026-10-31",
+  "facilities": [
+    "小菅西フットサル場"
+  ],
+  "note": "随時申込みは利用日の1か月前の同日から利用日当日まで。表示可能範囲ではなく直接予約可能範囲に使用する。"
+}
