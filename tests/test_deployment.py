@@ -264,6 +264,17 @@ class PureAndPorts(unittest.TestCase):
                 pw.chromium.launch.assert_called_once_with(headless=True)
                 context.close.assert_called_once();browser.close.assert_called_once()
 
+    def test_storage_identifies_application_without_weakening_authorization(self):
+        opener=MagicMock()
+        opener.open.return_value.read.return_value=b'{"ok":true}'
+        with patch('monitor.storage.build_opener',return_value=opener):
+            self.assertTrue(D1Storage('https://storage.test','a'*32).call('snapshot',{})['ok'])
+        request=opener.open.call_args.args[0]
+        self.assertEqual(request.get_header('User-agent'),'BotDatSan-Monitor/1.0')
+        self.assertEqual(request.get_header('Authorization'),'Bearer '+'a'*32)
+        self.assertEqual(request.get_method(),'POST')
+        self.assertEqual(request.full_url,'https://storage.test/v1/snapshot')
+
     def test_outside_operating_hours_does_not_touch_any_adapter(self):
         storage=MagicMock();collector=MagicMock();telegram=MagicMock()
         r=run_once(storage,collector,telegram,'-1001',clock=lambda:T0.replace(hour=6))

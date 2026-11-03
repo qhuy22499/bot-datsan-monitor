@@ -24,3 +24,15 @@ test('failure records never modify slots or fabricate reservations',async()=>{co
 test('snapshot is read-only and stale owner still rejected',async()=>{const {db,send}=setup();const a=await send('acquire',{owner,destination:'-1001'});const before=db.sql.prepare('SELECT total_changes() n').get().n;assert((await send('snapshot',{owner,fence:a.fence})).ok);assert.equal(db.sql.prepare('SELECT total_changes() n').get().n,before);assert.equal((await send('snapshot',{owner,fence:a.fence+1})).error,'STALE_OWNER');assert.equal(db.sql.prepare('SELECT total_changes() n').get().n,before);db.close();});
 test('deployed handler never accepts fixture clock headers',async()=>{const db=new LocalD1();const before=Date.now();const r=await worker.fetch(new Request('https://storage.test/v1/acquire',{method:'POST',headers:{'Authorization':'Bearer '+secret,'Content-Type':'application/json','X-Fixture-Clock':'0'},body:JSON.stringify({owner,destination:'-1001'})}),{DB:db,API_SECRET:secret});const body=await r.json();assert(body.ok);assert(body.expires>before);db.close();});
 test('noncanonical timestamps and invalid owner types are rejected',async()=>{const {db,send}=setup();assert.equal((await send('acquire',{owner:[owner],destination:'-1001'})).status,400);const a=await send('acquire',{owner,destination:'-1001'});const bad=await send('failure',{owner,fence:a.fence,id:'a'.repeat(32),started_at:'2026-10-31T24:00:00+09:00',finished_at:'2026-10-31T24:00:00+09:00',status:'FAILED',reason:'READ_ERROR',days:0,cells:0});assert.equal(bad.status,400);assert.equal(db.sql.prepare('SELECT count(*) n FROM scans').get().n,0);db.close();});
+test('storage diagnostics never expose SQL, bindings, tokens or raw exceptions',async()=>{
+ const {db,send}=setup();const a=await send('acquire',{owner,destination:'-1001'});
+ const batch=db.batch;const warn=console.warn;const logged=[];
+ db.batch=async()=>{throw new Error('SQL request size limit exceeded SELECT private_table '+secret);};
+ console.warn=(...args)=>logged.push(args.join(' '));
+ try {
+  const r=await send('failure',{owner,fence:a.fence,id:'c'.repeat(32),started_at:'2026-10-31T08:00:00+09:00',finished_at:'2026-10-31T08:00:01+09:00',status:'FAILED',reason:'READ_ERROR',days:0,cells:0});
+  assert.equal(r.error,'STORAGE_UNAVAILABLE');assert.equal(r.status,503);
+  assert.equal(logged.length,1);assert(logged[0].includes('limit'));
+  for(const text of [secret,'SELECT','private_table'])assert(!JSON.stringify({r,logged}).includes(text));
+ } finally {db.batch=batch;console.warn=warn;db.close();}
+});

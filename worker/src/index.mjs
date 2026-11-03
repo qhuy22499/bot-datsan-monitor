@@ -29,11 +29,15 @@ function guard(db,p,now,revision=null) {
 }
 async function atomic(db,p,now,commands,revision=null) {
   try {return await db.batch([guard(db,p,now,revision),...commands,db.prepare('DELETE FROM atomic_guard')]);}
-  catch {
+  catch (error) {
     const current=await db.prepare('SELECT owner,fence,expires FROM lease WHERE id=1').first();
     const state=await db.prepare('SELECT revision FROM source WHERE id=1').first();
     if(!current || current.owner!==p.owner || current.fence!==p.fence || current.expires<=now
        || (revision!==null && state.revision!==revision)) throw new Fault('STALE_OWNER',409);
+    // Fixed-vocabulary diagnostics only: never SQL, bound values, URLs or tokens.
+    const words=new Set('too many large small maximum exceeded limit size length statement statements batch request requests body binding parameters variables sqlite sql cpu time memory storage overloaded unavailable constraint foreign key failed failure nested json depth'.split(' '));
+    const terms=[...new Set(((error?.message||'')+' '+(error?.cause?.message||'')).toLowerCase().match(/[a-z]+/g)||[])].filter(word=>words.has(word));
+    console.warn('D1_ATOMIC_FAILURE',JSON.stringify({terms:terms.slice(0,24)}));
     throw new Fault('STORAGE_UNAVAILABLE',503);
   }
 }

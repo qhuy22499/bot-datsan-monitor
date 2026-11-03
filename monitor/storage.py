@@ -44,7 +44,8 @@ class D1Storage:
                 result = self._transport(command, payload)
             else:
                 request = Request(self._url + "/v1/" + command, data=data, method="POST", headers={
-                    "Authorization": "Bearer " + self._secret, "Content-Type": "application/json"})
+                    "Authorization": "Bearer " + self._secret, "Content-Type": "application/json",
+                    "User-Agent": "BotDatSan-Monitor/1.0"})
                 try:
                     response = build_opener(NoRedirect()).open(request, timeout=30)
                 except HTTPError as failure:
