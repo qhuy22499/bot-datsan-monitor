@@ -47,28 +47,35 @@ function validatePlan(p,now) {
   need(['QUIET','NOTIFY'].includes(p.baseline));
   const s=p.scan;keys(s,'id,started_at,finished_at,status,reason,window_start,window_end,days,cells');
   rowid(s.id);stamp(s.started_at);stamp(s.finished_at);day(s.window_start);day(s.window_end);
+  // A scan repeats each date 14 times and typically shares observation stamps.
+  // Cache only validated strings within this request, never across requests.
+  const checkedDays=new Set([s.window_start,s.window_end]);
+  const startedMs=Date.parse(s.started_at),finishedMs=Date.parse(s.finished_at);
+  const checkedStamps=new Map([[s.started_at,startedMs],[s.finished_at,finishedMs]]);
+  const usageDay=value=>{if(!checkedDays.has(value)){day(value);checkedDays.add(value);}};
+  const observationTime=value=>{if(!checkedStamps.has(value)){stamp(value);checkedStamps.set(value,Date.parse(value));}return checkedStamps.get(value);};
   need(s.status==='COMPLETE' && s.reason==='VERIFIED' && integer(s.days,1,366) && s.cells===s.days*14);
   need(s.window_start===s.started_at.slice(0,10) && s.window_start===s.finished_at.slice(0,10));
   need((Date.parse(s.window_end)-Date.parse(s.window_start))/86400000+1===s.days);
-  need(Date.parse(s.started_at)<=Date.parse(s.finished_at) && Date.parse(s.finished_at)<=now && now-Date.parse(s.started_at)<=300000);
+  need(startedMs<=finishedMs && finishedMs<=now && now-startedMs<=300000);
   const limits={slots:8192,opportunities:4096,batches:128,members:1024,jobs:128,transitions:8192};
   for (const [name,max] of Object.entries(limits)) need(Array.isArray(p[name]) && p[name].length<=max);
   const unique=new Set();let active=0;
   for (const r of p.slots) {
     keys(r,'id,day,court,start,end,status,observed_at,in_scope,scan_id');
-    day(r.day);stamp(r.observed_at);rowid(r.scan_id);
+    usageDay(r.day);const observedMs=observationTime(r.observed_at);rowid(r.scan_id);
     need(['A','B'].includes(r.court) && TIMES.includes(r.start+':'+r.end) && STATES.has(r.status));
     need(r.id===`${r.day}:${r.court}:${r.start}:${r.end}` && !unique.has(r.id));unique.add(r.id);
     need(r.in_scope===0 || r.in_scope===1);
     if (r.in_scope===1) {
       active++;
       need(r.day>=s.window_start && r.day<=s.window_end && r.scan_id===s.id);
-      need(Date.parse(r.observed_at)>=Date.parse(s.started_at) && Date.parse(r.observed_at)<=Date.parse(s.finished_at));
+      need(observedMs>=startedMs && observedMs<=finishedMs);
     }
   }
   need(active===s.cells);
   for (const r of p.opportunities) {
-    keys(r,'id,slot_id,state,origin,reason,created_scan,updated_at');rowid(r.id);rowid(r.created_scan);stamp(r.updated_at);
+    keys(r,'id,slot_id,state,origin,reason,created_scan,updated_at');rowid(r.id);rowid(r.created_scan);observationTime(r.updated_at);
     need(typeof r.slot_id==='string' && r.slot_id.length<64 && ['ACTIVE','INVALIDATED','EXPIRED'].includes(r.state));
     need(['BASELINE','FIRST_OBSERVED','ENTERED_SCOPE','REOPENED'].includes(r.origin));
     need(['AVAILABLE','OUT_OF_SCOPE','STARTED','SOURCE_NOT_AVAILABLE'].includes(r.reason));

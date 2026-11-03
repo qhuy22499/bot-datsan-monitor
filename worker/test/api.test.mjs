@@ -36,3 +36,18 @@ test('storage diagnostics never expose SQL, bindings, tokens or raw exceptions',
   for(const text of [secret,'SELECT','private_table'])assert(!JSON.stringify({r,logged}).includes(text));
  } finally {db.batch=batch;console.warn=warn;db.close();}
 });
+test('repeated-date validation cache preserves canonical dates and per-row time bounds',async()=>{
+ const {db,send}=setup();const acquired=await send('acquire',{owner,destination:'-1001'});
+ const ms=Date.now()-2000;const stamp=value=>new Date(value+9*3600000).toISOString().slice(0,19)+'+09:00';
+ const at=stamp(ms),day=at.slice(0,10),sid='d'.repeat(32);
+ const times=[['08:00','10:00'],['10:00','12:00'],['12:00','14:00'],['14:00','16:00'],['16:00','18:00'],['18:30','20:30'],['20:30','22:30']];
+ const slots=[];for(const court of ['A','B'])for(const [start,end]of times)slots.push({id:`${day}:${court}:${start}:${end}`,day,court,start,end,status:'GENERAL_RESERVED',observed_at:at,in_scope:1,scan_id:sid});
+ const base={owner,fence:acquired.fence,expected_revision:0,scan:{id:sid,started_at:at,finished_at:at,status:'COMPLETE',reason:'VERIFIED',window_start:day,window_end:day,days:1,cells:14},baseline:'QUIET',slots,opportunities:[],batches:[],members:[],jobs:[],transitions:[],execution_allowed:false,auto_booking_allowed:false};
+ try {
+  for(const change of [r=>{r.observed_at=stamp(ms-86400000);},r=>{r.observed_at=at.replace('+09:00','+0900');},r=>{r.day='2026-02-30';}]) {
+   const bad=structuredClone(base);change(bad.slots[13]);assert.equal((await send('commit',bad)).status,400);
+   assert.equal(db.sql.prepare('SELECT revision FROM source WHERE id=1').get().revision,0);
+  }
+  assert((await send('commit',base)).ok);assert.equal(db.sql.prepare('SELECT count(*) n FROM slots').get().n,14);
+ } finally {db.close();}
+});
