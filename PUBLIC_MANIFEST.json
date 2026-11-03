@@ -47,8 +47,8 @@
     "worker/src/index.mjs": "7b7cc10e777771f0a70729f7beaef84c6813b7ba69f7e172a3eb7a2f309e388c",
     "worker/test/api.test.mjs": "3a86d112b95c3a5440665784148fe800da5bfaec5b6d8d749a7dc8e11a0a7c13",
     "worker/test/d1.mjs": "edc68a5371b5bbf787716554c73d743934b229fc2611f44d7704ad10cdcd5d7a",
-    "worker/test/engine.mjs": "6a9339b6943a736da24423c43cdfb3af0eb13c379b2f327a4f6b9e9ed000cac2",
-    "worker/test/miniflare.test.mjs": "87acb580c83117372a8028a03733af56997b5f47955207ef749f2e9aaa372e42",
+    "worker/test/engine.mjs": "62568a3d9aee092254f76584a134c2ac2daf29063e1b5597cae0a6fe949495e2",
+    "worker/test/miniflare.test.mjs": "72dccf6381a22537dc0b74ff15ec7e51621b304937f26326567cfc367374a862",
     "worker/test/server.mjs": "9afa8035954932f3457b3220025be52f265d2cce42c9775b7f8b1c9111159aa5",
     "worker/wrangler.jsonc": "09c5f787434141e26366239d4a38224db604af97cdaf9b871071e52e9e931892"
   }

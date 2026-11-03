@@ -16,8 +16,13 @@ export async function startD1(persistPath) {
  if(!Number.isSafeInteger(clock)) return new Response('',{status:400});
  return createHandler(()=>clock).fetch(request,env);
  }};`);
- const options={modules:true,scriptPath:join(directory,'entry.mjs'),compatibilityDate:'2025-10-01',
-   d1Databases:{DB:'00000000-0000-0000-0000-000000000001'},bindings:{API_SECRET:SECRET},...(persistPath ? {d1Persist:persistPath} : {})};
+ // The pinned v5 compatibility converter does not discover imported modules,
+ // and strips the legacy d1Persist option. Declare both modules and the v5
+ // resource root explicitly so actual D1 survives a child-process restart.
+ const options={modules:[{type:'ESModule',path:join(directory,'entry.mjs')},{type:'ESModule',path:join(directory,'index.mjs')}],
+   modulesRoot:directory,compatibilityDate:'2025-10-01',
+   d1Databases:{DB:'00000000-0000-0000-0000-000000000001'},bindings:{API_SECRET:SECRET},
+   ...(persistPath ? (miniflare.convertV4MiniflareOptions ? {resourcePersistencePath:persistPath} : {d1Persist:persistPath}) : {})};
  const mf=new miniflare.Miniflare(miniflare.convertV4MiniflareOptions ? miniflare.convertV4MiniflareOptions(options) : options);
  try {
   const db=await mf.getD1Database('DB');

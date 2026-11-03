@@ -1,12 +1,34 @@
 // Actual local workerd + D1 binding. No Cloudflare account or remote requests.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import * as miniflare from 'miniflare';
+import {startD1} from './engine.mjs';
 const SECRET='offline_test_only_01234567890123456789';
 const OWNER='11111111-1111-4111-8111-111111111111';
 const id=n=>n.toString(16).padStart(32,'0');
 const stamp=ms=>new Date(ms+9*3600000).toISOString().slice(0,19)+'+09:00';
+
+test('actual D1 harness resolves wrapper imports and persists across restart',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'datsan-d1-restart-'));
+ let engine;
+ try {
+  const now=Date.now();
+  const call=async()=>{
+   const response=await engine.fetch('/v1/acquire',{now,headers:{'Content-Type':'application/json','Authorization':'Bearer '+SECRET},body:JSON.stringify({owner:OWNER,destination:'-1001'})});
+   assert.equal(response.status,200);return response.json();
+  };
+  engine=await startD1(directory);
+  const first=await call();assert(first.ok);
+  await engine.db.prepare('UPDATE lease SET expires=0 WHERE id=1').run();
+  await engine.close();engine=null;
+  engine=await startD1(directory);
+  const second=await call();assert(second.ok);assert(second.fence>first.fence);
+  assert.equal((await engine.db.prepare('SELECT destination FROM source WHERE id=1').first()).destination,'-1001');
+ } finally {if(engine)await engine.close();rmSync(directory,{recursive:true,force:true});}
+});
 test('workerd/D1 local: migration, commit, concurrency, receipt, rollback, lease fencing',async t=>{
  const options={modules:true,scriptPath:new URL('../src/index.mjs',import.meta.url).pathname.replace(/^\/(.:)/,'$1'),compatibilityDate:'2025-10-01',d1Databases:['DB'],bindings:{API_SECRET:SECRET}};
  const mf=new miniflare.Miniflare(miniflare.convertV4MiniflareOptions ? miniflare.convertV4MiniflareOptions(options) : options);
