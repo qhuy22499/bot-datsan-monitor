@@ -1,7 +1,7 @@
 {
   "schema": "public-allowlist-v1",
   "files": {
-    ".github/workflows/monitor.yml": "1639fc05a07979649b23ee1239d973e987a79f4330a6b6a33ae5b57a101ed14c",
+    ".github/workflows/monitor.yml": "58ddda08caa4410b0b78ffd9c1eb014cf7f00cc0acb044e930c2b83ffc093970",
     ".github/workflows/validate.yml": "95b8728213e730d1950661fb7fed39f63e5b0eae9e614de8ac78e8c70b204ddc",
     ".gitignore": "1705bcaee677c2370dd68e2c494daebb01419ac848b5dcbbfdf708b88ab394f2",
     ".gitleaks.toml": "da77c5a19b14f0dc5b963ab08f55b654994c119224f6925ec5220027ecc5510a",
@@ -37,7 +37,7 @@
     "tests/support.py": "756cd6b27ac16251f2446bc9054c521a118fa76f4921345c2a914d12a7709f9c",
     "tests/test_collector_dom.py": "88198880ec26d4f6583aaa3ff024b6bf88cb643c82098491204dc582b3812bd5",
     "tests/test_deployment.py": "7972e97f24015e39c51cedce0bf0d03137c7fcce851d1ed581cde954ae4d1f21",
-    "tests/test_release_safety.py": "be5871d2381e75941ea4e4bc9f1a70cf1cf69fc5c737e9e1dbb0d28a192e04bc",
+    "tests/test_release_safety.py": "a6d0a2370ab8dc2b73f81a615bc7d1fb478f2da546176f31c821344902811c2f",
     "tools/audit_public.py": "768a0473649b2b191972162047fe01c10b3c89f239cf2f37368c1455b02918fa",
     "tools/export_release.py": "be688a3e8179c42d721a92c2f5c4658fc52a2a68946fc5ae9d4e592e484625f9",
     "tools/verify_origin.py": "9b2a98131fbb1cadf654f81c08cd30da14e0cb7903ea4109568428e14045272d",

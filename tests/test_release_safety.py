@@ -62,4 +62,56 @@ class ReleaseSafety(unittest.TestCase):
         self.assertFalse(re.fullmatch(allow['regexes'][0],'synthetic_'+ 'Z9'*30))
 
 
+class WorkflowTelegramTransport(unittest.TestCase):
+    def script(self):
+        import textwrap
+        workflow=(Path(__file__).resolve().parents[1]/'.github/workflows/monitor.yml').read_text(encoding='utf-8')
+        block=workflow.split('      - name: Telegram transport TEST only\n',1)[1].split('      - name:',1)[0]
+        self.assertIn("github.event_name == 'workflow_dispatch' && inputs.telegram_transport_test",block)
+        return textwrap.dedent(block.split("          python - <<'PY'\n",1)[1].split('\n          PY',1)[0])
+
+    def invoke(self, *, chat='-1001', error=None):
+        from contextlib import redirect_stdout
+        import io
+        from types import SimpleNamespace
+        from unittest.mock import Mock,patch
+        adapter=Mock()
+        adapter.send_message.return_value=SimpleNamespace(message_id=17)
+        adapter.send_message.side_effect=error
+        out=io.StringIO()
+        with patch.dict('os.environ',{'TELEGRAM_TEST_CHAT_ID':chat,'TELEGRAM_DESTINATION':'TEST',
+                       'TELEGRAM_BOT_TOKEN':'offline_test_only_value'},clear=True), \
+             patch('monitor.shared.telegram.TelegramBotAdapter',return_value=adapter), redirect_stdout(out):
+            with self.assertRaises(SystemExit) as stopped:
+                exec(compile(self.script(),'<workflow-transport-test>','exec'),{})
+        return json.loads(out.getvalue()),stopped.exception.code,adapter
+
+    def test_transport_sends_once_without_collector_storage_or_booking(self):
+        import ast
+        tree=ast.parse(self.script())
+        modules={n.module for n in ast.walk(tree) if isinstance(n,ast.ImportFrom)}
+        self.assertEqual(modules,{'monitor.shared.telegram'})
+        result,code,adapter=self.invoke()
+        self.assertEqual((result['status'],result['message_id'],code),('SENT',17,0))
+        self.assertFalse(result['execution_allowed']);self.assertFalse(result['auto_booking_allowed'])
+        adapter.send_message.assert_called_once()
+        self.assertIn('KHÔNG PHẢI THÔNG BÁO SÂN TRỐNG',adapter.send_message.call_args.args[1])
+
+    def test_transport_failure_is_not_retried_and_ambiguous_is_uncertain(self):
+        from monitor.shared.telegram import TelegramDeliveryError
+        for error,status in [(TelegramDeliveryError('TELEGRAM_FORBIDDEN'),'FAILED'),
+                             (TelegramDeliveryError('TELEGRAM_DELIVERY_UNKNOWN',True),'UNCERTAIN')]:
+            with self.subTest(status=status):
+                result,code,adapter=self.invoke(error=error)
+                self.assertEqual((result['status'],code),(status,2))
+                self.assertNotIn('message_id',result)
+                adapter.send_message.assert_called_once()
+                self.assertNotIn('offline_test_only_value',json.dumps(result))
+
+    def test_transport_rejects_private_destination_without_sending(self):
+        result,code,adapter=self.invoke(chat='1001')
+        self.assertEqual((result['status'],code),('FAILED',2))
+        adapter.send_message.assert_not_called()
+
+
 if __name__=='__main__':unittest.main()

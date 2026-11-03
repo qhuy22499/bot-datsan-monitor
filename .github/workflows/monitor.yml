@@ -6,6 +6,10 @@ on:
         description: Only after separate deployment approval; permits TEST notifications
         type: boolean
         default: false
+      telegram_transport_test:
+        description: Send one TEST connectivity message only; no website or D1 mutation
+        type: boolean
+        default: false
   # Schedule OFF. Enable only after manual deployment acceptance.
   # Trial proposal only: UTC 22:07..14:37 == JST 07:07..23:37,
   # 34 runs/day, 30 minutes apart. Delay/skipped runs are acceptable.
@@ -30,8 +34,38 @@ jobs:
           python-version: '3.13'
       - run: |
           python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
-      - run: python -m playwright install --with-deps chromium
+      - if: ${{ !inputs.telegram_transport_test }}
+        run: python -m playwright install --with-deps chromium
+      - name: Telegram transport TEST only
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.telegram_transport_test }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_TEST_CHAT_ID: ${{ secrets.TELEGRAM_TEST_CHAT_ID }}
+          TELEGRAM_DESTINATION: TEST
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          from monitor.shared.telegram import TelegramBotAdapter, TelegramDeliveryError, chat_id
+          report = {"kind": "TELEGRAM_TRANSPORT_TEST_ONLY", "execution_allowed": False, "auto_booking_allowed": False}
+          try:
+              destination = chat_id(os.environ.get("TELEGRAM_TEST_CHAT_ID", ""))
+              if os.environ.get("TELEGRAM_DESTINATION") != "TEST" or not destination.startswith("-"):
+                  raise TelegramDeliveryError("INVALID_CHAT_ID")
+              receipt = TelegramBotAdapter(os.environ.get("TELEGRAM_BOT_TOKEN"), enabled=True).send_message(
+                  destination,
+                  "[TEST — GITHUB ACTIONS → TELEGRAM]\nKHÔNG PHẢI THÔNG BÁO SÂN TRỐNG.\n"
+                  "Kiểm tra đường truyền tới Group TEST; không quét website, không đặt sân, không thay đổi baseline.", [])
+              report.update(status="SENT", message_id=receipt.message_id)
+          except TelegramDeliveryError as error:
+              report.update(status="UNCERTAIN" if error.ambiguous else "FAILED", reason=error.code)
+          except Exception:
+              report.update(status="UNCERTAIN", reason="TRANSPORT_TEST_STOPPED_NO_RETRY")
+          print(json.dumps(report))
+          sys.exit(0 if report["status"] == "SENT" else 2)
+          PY
       - name: One-shot public scan and TEST delivery
+        if: ${{ !inputs.telegram_transport_test }}
         env:
           MONITOR_API_URL: ${{ secrets.MONITOR_API_URL }}
           MONITOR_API_SECRET: ${{ secrets.MONITOR_API_SECRET }}
