@@ -170,10 +170,16 @@ npx wrangler deploy --config wrangler.deploy.json
 
 ## Trước khi bật schedule
 
-Chưa thực hiện trong milestone này. Cần manual Actions + Worker/D1 LIVE PASS,
-review CPU 10ms Free, quotas, source lock, lost receipt recovery, lịch lễ, kỳ
-thiếu ngày tương ứng, cutover không hai sender. Comment cron dùng phút 7/22/37/52
-để tránh đỉnh đầu giờ, 68 runs/ngày 07:07–23:52 JST. Dù cron delayed, runtime
+Manual Actions + Worker/D1 LIVE đã PASS hai lượt ngày 03/11/2026, mỗi lượt
+31 ngày/434 ô, baseline QUIET; không tạo notification trùng. Chưa bật schedule.
+Người vận hành chấp nhận độ trễ 30–60 phút hoặc bỏ một lượt trên Free Tier.
+CPU có thể vượt 10ms trong burst; không bảo đảm mọi request luôn thành công.
+Giữ source lock/fencing, atomic commit và UNCERTAIN khi kết quả gửi chưa rõ;
+lượt lỗi không được coi COMPLETE và lượt sau phải quét mới để xác minh phục hồi.
+Comment cron đề xuất phút 7/37, 34 runs/ngày 07:07–23:37 JST. Chỉ bỏ comment
+sau khi được duyệt bật lịch; job guard đã hỗ trợ schedule nhưng trigger vẫn OFF.
+Tiếp tục theo dõi quotas, lịch lễ, kỳ thiếu ngày tương ứng và không hai sender.
+Dù cron delayed, runtime
 vẫn kiểm giờ thực và date ở JST; qua nửa đêm scan không COMPLETE. Cron không
 bảo đảm tick đúng giờ, có thể drop/disable sau inactivity. Không SLA realtime.
 

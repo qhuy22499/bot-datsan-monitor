@@ -7,9 +7,10 @@ on:
         type: boolean
         default: false
   # Schedule OFF. Enable only after manual deployment acceptance.
-  # UTC 22:07..14:52 == JST 07:07..23:52, 68 runs/day, 15 minutes apart.
+  # Trial proposal only: UTC 22:07..14:37 == JST 07:07..23:37,
+  # 34 runs/day, 30 minutes apart. Delay/skipped runs are acceptable.
   # schedule:
-  #   - cron: '7,22,37,52 22,23,0-14 * * *'
+  #   - cron: '7,37 22,23,0-14 * * *'
 permissions:
   contents: read
 concurrency:
@@ -17,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   monitor:
-    if: ${{ inputs.confirm_test_delivery }}
+    if: ${{ github.event_name == 'schedule' || inputs.confirm_test_delivery }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

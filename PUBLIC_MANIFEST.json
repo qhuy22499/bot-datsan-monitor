@@ -1,15 +1,15 @@
 {
   "schema": "public-allowlist-v1",
   "files": {
-    ".github/workflows/monitor.yml": "969b0c031d90cff2e3e3982cf4523579e87a0638d92b11de020eb76dbf5bae56",
+    ".github/workflows/monitor.yml": "1639fc05a07979649b23ee1239d973e987a79f4330a6b6a33ae5b57a101ed14c",
     ".github/workflows/validate.yml": "95b8728213e730d1950661fb7fed39f63e5b0eae9e614de8ac78e8c70b204ddc",
     ".gitignore": "1705bcaee677c2370dd68e2c494daebb01419ac848b5dcbbfdf708b88ab394f2",
     ".gitleaks.toml": "da77c5a19b14f0dc5b963ab08f55b654994c119224f6925ec5220027ecc5510a",
     "BASELINE_AND_MIGRATION.md": "177cb2eb55d2f4531176bccbbac4b9c591441b4b42bc2e5e9db4aa155826239c",
     "CORE_PROVENANCE.json": "5d96acabcb85951bc6bea42e641227ef544168422f732b8278b6b68686d6d4ad",
-    "FREE_TIER.md": "f5e5df074d9073469d60c9f77f8771ac550e983c091e2d8c31701f8488260466",
+    "FREE_TIER.md": "b16cd0b43e8e35c34a7980f835acad3ec7646e6f075fe9b60e946f46afe04a93",
     "PUBLISHING.md": "50df06cf70073f5f9f1d59a07a6c5b1142f45b92efcfd7ccdb93ca2c086220a7",
-    "README.md": "c99846ab66bc0251daa46473ad35632b50dd903b3708f0d45e8b34d5d0992624",
+    "README.md": "e7be831f2b8bce22876c8cf977f9ef9e0e2f4e25cf0408ad4fcc2a4e22e8d45b",
     "SECURITY_REVIEW.md": "39a8d8cf96fc2261bf0266f0c0453c8fefeb0fc898e37e665bf6e82a64375bc1",
     "UBUNTU_VALIDATION.md": "243c669472457ecdf943f8b43090ebbb3e5a2bc2c46b26a7adb0680919d4daca",
     "monitor/__init__.py": "a274bd219c83a676a22eebfce98f5d751d23140f936e17c3121dac2f867261c3",
