@@ -1,20 +1,20 @@
-name: Public availability monitor (TEST, manual only)
+name: Public availability monitor (TEST scheduled trial)
 on:
   workflow_dispatch:
     inputs:
       confirm_test_delivery:
-        description: Only after separate deployment approval; permits TEST notifications
+        description: Explicitly permits TEST notifications for a manual run
         type: boolean
         default: false
       telegram_transport_test:
         description: Send one TEST connectivity message only; no website or D1 mutation
         type: boolean
         default: false
-  # Schedule OFF. Enable only after manual deployment acceptance.
-  # Trial proposal only: UTC 22:07..14:37 == JST 07:07..23:37,
-  # 34 runs/day, 30 minutes apart. Delay/skipped runs are acceptable.
-  # schedule:
-  #   - cron: '7,37 22,23,0-14 * * *'
+  # Authorized TEST trial: 34 runs/day, 07:07..23:37 JST.
+  # Delayed/skipped runs are acceptable; runtime also checks verified hours.
+  schedule:
+    - cron: '7,37 7-23 * * *'
+      timezone: Asia/Tokyo
 permissions:
   contents: read
 concurrency:

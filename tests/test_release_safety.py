@@ -114,4 +114,25 @@ class WorkflowTelegramTransport(unittest.TestCase):
         adapter.send_message.assert_not_called()
 
 
+class ScheduledTrialContract(unittest.TestCase):
+    def test_jst_schedule_operating_hours_manual_and_safety_guards(self):
+        from datetime import datetime,timedelta
+        from zoneinfo import ZoneInfo
+        root=Path(__file__).resolve().parents[1]
+        workflow=(root/'.github/workflows/monitor.yml').read_text(encoding='utf-8')
+        self.assertIn("  schedule:\n    - cron: '7,37 7-23 * * *'\n      timezone: Asia/Tokyo",workflow)
+        self.assertIn('  workflow_dispatch:',workflow)
+        self.assertIn("github.event_name == 'schedule' || inputs.confirm_test_delivery",workflow)
+        self.assertIn('group: katsushika-public-monitor-test\n  cancel-in-progress: false',workflow)
+        self.assertIn('--baseline QUIET',workflow)
+        self.assertIn('TELEGRAM_DESTINATION: TEST',workflow)
+        hours=json.loads((root/'monitor/shared/data/mvp_monitoring_config.json').read_text(encoding='utf-8'))
+        self.assertTrue(hours['hours_verified'])
+        self.assertEqual((hours['website_opens_jst'],hours['website_closes_jst']),('07:00','24:00'))
+        ticks=[datetime(2026,11,3,h,m,tzinfo=ZoneInfo('Asia/Tokyo')) for h in range(7,24) for m in (7,37)]
+        self.assertEqual(len(ticks),34)
+        self.assertEqual((ticks[0].strftime('%H:%M'),ticks[-1].strftime('%H:%M')),('07:07','23:37'))
+        self.assertTrue(all(b-a==timedelta(minutes=30) for a,b in zip(ticks,ticks[1:])))
+
+
 if __name__=='__main__':unittest.main()

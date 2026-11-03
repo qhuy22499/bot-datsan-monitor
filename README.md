@@ -167,17 +167,23 @@ npx wrangler deploy --config wrangler.deploy.json
    FK, receipt, Worker CPU/rows metrics trên dashboard, không in payload logs.
 9. Lượt manual tiếp theo: giữ AVAILABLE → gửi 0; khi có thay đổi thật mới gửi.
    Không tạo giả dữ liệu website để gọi LIVE PASS. Có thể cần chờ cơ hội tự nhiên.
+10. Kiểm tra riêng GitHub → Telegram: manual `workflow_dispatch`, chọn cả
+    `confirm_test_delivery` và `telegram_transport_test`. Chế độ này gửi đúng một
+    tin TEST trung lập, bỏ qua Chromium/scan/D1, không đổi opportunity/baseline.
+    Không chạy lại mù quáng nếu kết quả gửi UNCERTAIN. Probe đã LIVE PASS ngày
+    03/11/2026, message_id 16; không cần bật probe khi chạy monitoring bình thường.
 
-## Trước khi bật schedule
+## Scheduled trial — chỉ Group TEST
 
 Manual Actions + Worker/D1 LIVE đã PASS hai lượt ngày 03/11/2026, mỗi lượt
-31 ngày/434 ô, baseline QUIET; không tạo notification trùng. Chưa bật schedule.
+31 ngày/434 ô, baseline QUIET; không tạo notification trùng.
+Sau GitHub → Telegram TEST PASS, lịch trial đã được phép bật ngày 03/11/2026.
 Người vận hành chấp nhận độ trễ 30–60 phút hoặc bỏ một lượt trên Free Tier.
 CPU có thể vượt 10ms trong burst; không bảo đảm mọi request luôn thành công.
 Giữ source lock/fencing, atomic commit và UNCERTAIN khi kết quả gửi chưa rõ;
 lượt lỗi không được coi COMPLETE và lượt sau phải quét mới để xác minh phục hồi.
-Comment cron đề xuất phút 7/37, 34 runs/ngày 07:07–23:37 JST. Chỉ bỏ comment
-sau khi được duyệt bật lịch; job guard đã hỗ trợ schedule nhưng trigger vẫn OFF.
+Cron `7,37 7-23 * * *`, timezone **Asia/Tokyo**, 34 runs/ngày 07:07–23:37 JST.
+Giữ manual confirmation cho workflow_dispatch; schedule không cần manual input.
 Tiếp tục theo dõi quotas, lịch lễ, kỳ thiếu ngày tương ứng và không hai sender.
 Dù cron delayed, runtime
 vẫn kiểm giờ thực và date ở JST; qua nửa đêm scan không COMPLETE. Cron không
@@ -186,5 +192,22 @@ bảo đảm tick đúng giờ, có thể drop/disable sau inactivity. Không SL
 Ngày cuối tháng ngắn có thể trả BOOKABLE_BOUNDARY_UNVERIFIED; giữ fail-safe,
 không âm thầm rút ngắn ALL_BOOKABLE. Calendar chỉ có coverage 2026–2027.
 Không dùng Reservation Freshness để chặn Availability notification.
+
+Lịch đã cấu hình không phải bằng chứng scheduled run hoặc trial 24–48 giờ PASS.
+Xem Actions → workflow → event `schedule`, summary và D1 last_success. Khi chưa
+có scheduled run thành công, chỉ ghi CONFIGURED. Theo dõi Worker CPU/5xx và D1
+Metrics → Row Metrics; không coi zero notification khi không có biến động là lỗi.
+
+**Tạm dừng nhanh:** Actions → workflow này → menu `…` → Disable workflow.
+Việc này chặn lượt mới, không rollback D1 hoặc tự dừng job đang chạy; ưu tiên cho
+job hiện tại kết thúc để ghi receipt/release lease. Không chạy Windows sender song
+song. Nếu buộc phải cancel do nguy cơ spam, kiểm tra IN_FLIGHT/UNCERTAIN trước khi
+khởi động lại, không reset baseline hoặc resend. Không tự bật Paid.
+
+**Inactivity:** GitHub có thể tự disable schedule sau 60 ngày không có activity
+trong public repo. Kiểm tra Actions, chọn Enable workflow rồi kiểm tra tick tiếp
+theo; nếu cần, commit sửa cron có chủ đích. Không tạo commit/keepalive định kỳ chỉ
+để lách inactivity. Re-enable không thay identity/baseline D1; kiểm tra last_success
+và outbox trước khi cho gửi tiếp.
 
 **execution_allowed=false; auto_booking_allowed=false.**

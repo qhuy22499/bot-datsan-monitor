@@ -5,7 +5,7 @@ không mua tài nguyên. Cần theo dõi usage thực trước khi schedule.
 
 | Thành phần | Hạn mức chính thức | Ước tính cho MVP |
 |---|---|---|
-| GitHub standard Linux runner, public repo | Free compute; larger runners khác | Đề xuất 34 jobs/ngày, khoảng 1.020/tháng 30 ngày; cron OFF |
+| GitHub standard Linux runner, public repo | Free compute; larger runners khác | Trial 34 jobs/ngày, khoảng 1.020/tháng 30 ngày; chỉ Group TEST |
 | Thời gian job | Phụ thuộc queue/install/browser | Hai manual workflow LIVE: 78 và 66 giây từ tạo đến kết thúc; scan 42 và 37 giây |
 | Runner public Linux | Standard x64: 4 vCPU, 16GB RAM | Một Chromium, không parallel; MVP Windows đo scan ~24–28 giây |
 | Workers Free | 100.000 request/ngày, 10ms CPU/request, 128MB | No-change 6 API calls/job đã đo; ≈204/ngày ở chu kỳ 30 phút, thêm claim+receipt nếu gửi |
@@ -52,7 +52,15 @@ dần; snapshot/validation hiện có cap fail-closed. Cần projection/archive/
 được review khi gần cap, không khẳng định chạy miễn phí vô hạn bằng dữ liệu nhỏ.
 Không dùng Actions artifacts/cache làm database. Không upload DB/log/payload.
 
-Cron đề xuất 30 phút có thể bị trễ hoặc drop, default branch mới chạy; public repo
+Cron trial 30 phút có thể bị trễ hoặc drop, default branch mới chạy; public repo
 có thể tắt cron sau 60 ngày không hoạt động. Chọn phút 7/37 thay đầu giờ.
-Runtime kiểm giờ thực 07–24 JST, không giả định cron đúng giờ. Schedule vẫn OFF.
+Runtime kiểm giờ thực 07–24 JST, không giả định cron đúng giờ. Schedule đã được
+phép bật sau GitHub → Telegram TEST PASS; dùng timezone Asia/Tokyo, phút 7/37,
+giờ 7–23. Không coi cấu hình lịch là bằng chứng trial dài hạn đã PASS.
 Xem [GitHub schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
+Usage snapshot ngày 03/11/2026 trước khi bật lịch: 44.659 D1 rows read,
+13.841 rows written, 575 read queries, 173 write queries; Worker 81 requests,
+0 runtime errors, CPU P50 5,518ms / P99 34,068ms. Đây là aggregate ngày gồm
+migration, validation cũ, các lượt manual và truy vấn quản trị, không phải chi phí
+một scan hoặc bằng chứng 24–48 giờ. Chưa bật Paid; theo dõi Dashboard trong trial.
