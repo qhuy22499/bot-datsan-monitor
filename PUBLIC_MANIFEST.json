@@ -1,8 +1,8 @@
 {
   "schema": "public-allowlist-v1",
   "files": {
-    ".github/workflows/monitor.yml": "30f4fbf1504b4db6c0f0039ca49553c2d49f50fccbe142ca027c3677cf941543",
-    ".github/workflows/validate.yml": "95b8728213e730d1950661fb7fed39f63e5b0eae9e614de8ac78e8c70b204ddc",
+    ".github/workflows/monitor.yml": "3386e000ce63bc7edca406cc19a0d91c1a306f45d394db6a1bc72f4aa0af203e",
+    ".github/workflows/validate.yml": "a5cfaccd022dbe9feae04c9440929e5441d745a3e284f91bdaf027686d56a0b9",
     ".gitignore": "1705bcaee677c2370dd68e2c494daebb01419ac848b5dcbbfdf708b88ab394f2",
     ".gitleaks.toml": "da77c5a19b14f0dc5b963ab08f55b654994c119224f6925ec5220027ecc5510a",
     "BASELINE_AND_MIGRATION.md": "177cb2eb55d2f4531176bccbbac4b9c591441b4b42bc2e5e9db4aa155826239c",
@@ -50,6 +50,9 @@
     "worker/test/engine.mjs": "62568a3d9aee092254f76584a134c2ac2daf29063e1b5597cae0a6fe949495e2",
     "worker/test/miniflare.test.mjs": "72dccf6381a22537dc0b74ff15ec7e51621b304937f26326567cfc367374a862",
     "worker/test/server.mjs": "9afa8035954932f3457b3220025be52f265d2cce42c9775b7f8b1c9111159aa5",
-    "worker/wrangler.jsonc": "09c5f787434141e26366239d4a38224db604af97cdaf9b871071e52e9e931892"
+    "worker/wrangler.jsonc": "09c5f787434141e26366239d4a38224db604af97cdaf9b871071e52e9e931892",
+    "cron/src/index.mjs": "8d8138a00f8e6418d9bfb931f82580e48af12c0625e7b71491b0b404e07868a0",
+    "cron/test/cron.test.mjs": "c128fb20fb34e6b664b0f08ab8cf9d997a9a97c78b6c04399296147c7e05d7cc",
+    "cron/wrangler.jsonc": "2e9b6f4bf996a3108659ef583870eaffe4e19772720920065126adbc345443f7"
   }
 }

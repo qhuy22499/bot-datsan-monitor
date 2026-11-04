@@ -36,6 +36,8 @@ jobs:
       - run: npm ci --ignore-scripts
         working-directory: worker
       - run: python tools/audit_public.py
+      - name: Cron trigger contract (offline, no dispatch)
+        run: node --test cron/test/cron.test.mjs
       - run: python -m unittest tests.test_deployment tests.test_collector_dom tests.test_release_safety -v
       - run: python -m monitor.runtime --dry-run
       - run: node --test --test-timeout=120000 test/api.test.mjs test/miniflare.test.mjs
