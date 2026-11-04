@@ -1,5 +1,5 @@
 // Trigger only. No Playwright, Telegram, storage mutation, or public dispatch API.
-export const CRON = '7,37 0-14,22-23 * * *';
+export const CRON = '7,22,37,52 0-14,22-23 * * *';
 export const DISPATCH_URL = 'https://api.github.com/repos/qhuy22499/bot-datsan-monitor/actions/workflows/monitor.yml/dispatches';
 
 const jstHour = ms => new Date(ms + 9 * 3600000).getUTCHours();
@@ -16,7 +16,7 @@ export async function dispatchScheduled(controller, env, {
   if (jstHour(now) < 7 || jstHour(at) < 7)
     return {status: 'SKIPPED', reason: 'OUTSIDE_VERIFIED_OPERATING_HOURS'};
   const minute = new Date(at).getUTCMinutes();
-  if (minute !== 7 && minute !== 37)
+  if (![7, 22, 37, 52].includes(minute))
     return {status: 'FAILED', reason: 'INVALID_SCHEDULE_MINUTE'};
   if (typeof env.GITHUB_DISPATCH_TOKEN !== 'string' || !/^github_pat_[A-Za-z0-9_]{40,250}$/.test(env.GITHUB_DISPATCH_TOKEN))
     return {status: 'FAILED', reason: 'GITHUB_CREDENTIAL_MISSING'};

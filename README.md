@@ -186,7 +186,8 @@ Secret duy nhất: **GITHUB_DISPATCH_TOKEN**, fine-grained PAT chỉ repository 
 Actions read/write; nhập qua Worker Secrets, không commit. Theo dõi expiry và
 rotation của token. Không sử dụng credential GitHub rộng quyền từ máy local.
 
-`cron/wrangler.jsonc`: UTC `7,37 0-14,22-23 * * *` = **07:07–23:37 JST**, 34 lượt/ngày.
+`cron/wrangler.jsonc`: UTC `7,22,37,52 0-14,22-23 * * *` = **07:07–23:52 JST**,
+68 lượt/ngày, cách nhau 15 phút trong giờ website 07:00–24:00 JST.
 Production `workers_dev=false`, `preview_urls=false`; HTTP handler luôn 404.
 Không có endpoint công khai để kích hoạt job. Không tự deploy file config này
 nếu chưa kiểm tra đúng account, thử dispatch và tắt nguồn schedule khác.
@@ -218,7 +219,7 @@ không âm thầm rút ngắn ALL_BOOKABLE. Calendar chỉ có coverage 2026–2
 Không dùng Reservation Freshness để chặn Availability notification.
 
 Lịch đã cấu hình không phải bằng chứng scheduled run hoặc trial 24–48 giờ PASS.
-Xem Actions → workflow → event `schedule`, summary và D1 last_success. Khi chưa
+Xem Actions → workflow → event `workflow_dispatch`, trigger_id `cfcron-…`, summary và D1 last_success. Khi chưa
 có scheduled run thành công, chỉ ghi CONFIGURED. Theo dõi Worker CPU/5xx và D1
 Metrics → Row Metrics; không coi zero notification khi không có biến động là lỗi.
 
@@ -239,3 +240,9 @@ workflow active, account/Actions permissions và PAT expiry. Khi khôi phục, g
 D1 identity/receipts, kiểm tra UNCERTAIN và quan sát run mới thực COMPLETE.
 
 **execution_allowed=false; auto_booking_allowed=false.**
+
+**Rollback về 30 phút:** thay đồng bộ `cron/wrangler.jsonc`, `CRON` và minute
+allowlist trong `cron/src/index.mjs` về `7,37 0-14,22-23 * * *`, phút `[7,37]`;
+cập nhật tests/manifest, kiểm tra targeted tests rồi deploy **cùng** Worker
+`bot-datsan-cron`. Chỉ sửa Cron trên Dashboard sẽ không đồng bộ validation.
+Giữ đúng một trigger; không bật GitHub native schedule, không reset D1/baseline.

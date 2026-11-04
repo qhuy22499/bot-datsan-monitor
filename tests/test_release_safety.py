@@ -122,7 +122,7 @@ class ScheduledTrialContract(unittest.TestCase):
         workflow=(root/'.github/workflows/monitor.yml').read_text(encoding='utf-8')
         self.assertNotIn('\n  schedule:',workflow)
         cron=json.loads((root/'cron/wrangler.jsonc').read_text(encoding='utf-8'))
-        self.assertEqual(cron['triggers']['crons'],['7,37 0-14,22-23 * * *'])
+        self.assertEqual(cron['triggers']['crons'],['7,22,37,52 0-14,22-23 * * *'])
         self.assertFalse(cron['workers_dev']);self.assertFalse(cron['preview_urls'])
         self.assertIn('  workflow_dispatch:',workflow)
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.confirm_test_delivery",workflow)
@@ -133,11 +133,11 @@ class ScheduledTrialContract(unittest.TestCase):
         self.assertTrue(hours['hours_verified'])
         self.assertEqual((hours['website_opens_jst'],hours['website_closes_jst']),('07:00','24:00'))
         from datetime import timezone
-        utc_ticks=[datetime(2026,11,3,h,m,tzinfo=timezone.utc) for h in (*range(15),22,23) for m in (7,37)]
+        utc_ticks=[datetime(2026,11,3,h,m,tzinfo=timezone.utc) for h in (*range(15),22,23) for m in (7,22,37,52)]
         ticks=sorted(t.astimezone(ZoneInfo('Asia/Tokyo')).time() for t in utc_ticks)
-        self.assertEqual(len(ticks),34)
-        self.assertEqual((ticks[0].strftime('%H:%M'),ticks[-1].strftime('%H:%M')),('07:07','23:37'))
-        self.assertTrue(all((b.hour*60+b.minute)-(a.hour*60+a.minute)==30 for a,b in zip(ticks,ticks[1:])))
+        self.assertEqual(len(ticks),68)
+        self.assertEqual((ticks[0].strftime('%H:%M'),ticks[-1].strftime('%H:%M')),('07:07','23:52'))
+        self.assertTrue(all((b.hour*60+b.minute)-(a.hour*60+a.minute)==15 for a,b in zip(ticks,ticks[1:])))
 
 
 if __name__=='__main__':unittest.main()

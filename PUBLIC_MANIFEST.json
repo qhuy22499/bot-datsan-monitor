@@ -7,9 +7,9 @@
     ".gitleaks.toml": "da77c5a19b14f0dc5b963ab08f55b654994c119224f6925ec5220027ecc5510a",
     "BASELINE_AND_MIGRATION.md": "177cb2eb55d2f4531176bccbbac4b9c591441b4b42bc2e5e9db4aa155826239c",
     "CORE_PROVENANCE.json": "5d96acabcb85951bc6bea42e641227ef544168422f732b8278b6b68686d6d4ad",
-    "FREE_TIER.md": "a2d31110c85ce2dcaa712d0fc3c456e29d7852887cb065f9b4d231cedb2a2e40",
+    "FREE_TIER.md": "887f00171cc55065aed3f05c5c30756a36cd4d8bd7b0757b191f50781270130c",
     "PUBLISHING.md": "50df06cf70073f5f9f1d59a07a6c5b1142f45b92efcfd7ccdb93ca2c086220a7",
-    "README.md": "da6d7c8a705213115b34de7f02000b81c6b63d8a576ea5902f8a7542c4d0f1f3",
+    "README.md": "ded79a7f7a35e4057b1e6dbb3bc6f0867932eb3e02507b3520cabca412bf4fb9",
     "SECURITY_REVIEW.md": "39a8d8cf96fc2261bf0266f0c0453c8fefeb0fc898e37e665bf6e82a64375bc1",
     "UBUNTU_VALIDATION.md": "243c669472457ecdf943f8b43090ebbb3e5a2bc2c46b26a7adb0680919d4daca",
     "monitor/__init__.py": "a274bd219c83a676a22eebfce98f5d751d23140f936e17c3121dac2f867261c3",
@@ -37,7 +37,7 @@
     "tests/support.py": "756cd6b27ac16251f2446bc9054c521a118fa76f4921345c2a914d12a7709f9c",
     "tests/test_collector_dom.py": "88198880ec26d4f6583aaa3ff024b6bf88cb643c82098491204dc582b3812bd5",
     "tests/test_deployment.py": "7972e97f24015e39c51cedce0bf0d03137c7fcce851d1ed581cde954ae4d1f21",
-    "tests/test_release_safety.py": "0f2a3973e23dfaad1e4325b4f0fe054c9d73a6a46f0e68c43f22733f174c27b2",
+    "tests/test_release_safety.py": "f49ee21658588390cf5ef5ac8f4affa8e4982a2ea9daa46e47b77d13616a8ba5",
     "tools/audit_public.py": "768a0473649b2b191972162047fe01c10b3c89f239cf2f37368c1455b02918fa",
     "tools/export_release.py": "be688a3e8179c42d721a92c2f5c4658fc52a2a68946fc5ae9d4e592e484625f9",
     "tools/verify_origin.py": "9b2a98131fbb1cadf654f81c08cd30da14e0cb7903ea4109568428e14045272d",
@@ -51,8 +51,8 @@
     "worker/test/miniflare.test.mjs": "72dccf6381a22537dc0b74ff15ec7e51621b304937f26326567cfc367374a862",
     "worker/test/server.mjs": "9afa8035954932f3457b3220025be52f265d2cce42c9775b7f8b1c9111159aa5",
     "worker/wrangler.jsonc": "09c5f787434141e26366239d4a38224db604af97cdaf9b871071e52e9e931892",
-    "cron/src/index.mjs": "edc83f161c9788b7295b5bc186f1506122ffff0444bf2441b390197b8d1837b5",
-    "cron/test/cron.test.mjs": "82a2d5214d39ca560b5b09ef0b182213689fb0c45c57707fd8b5bee068d412b0",
-    "cron/wrangler.jsonc": "2e9b6f4bf996a3108659ef583870eaffe4e19772720920065126adbc345443f7"
+    "cron/src/index.mjs": "9e50b3cd6d5fec528da8273558968b2ed9c0ab1a51b57c1f41fb021b1c73c126",
+    "cron/test/cron.test.mjs": "736a81c59400420f344e34d807715e4bbcc4aa75dc2c385675a69e684a00db9e",
+    "cron/wrangler.jsonc": "4390d6dcf4ace59af55b357dd2399807e7297c427d631312cf42d3416769ed49"
   }
 }

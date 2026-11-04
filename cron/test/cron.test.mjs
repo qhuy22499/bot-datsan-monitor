@@ -8,15 +8,17 @@ const at=Date.parse('2026-11-04T10:07:00Z'); // 19:07 JST
 const event=(ms=at)=>({cron:CRON,scheduledTime:ms,noRetry(){this.noRetryCalled=true;}});
 const env={GITHUB_DISPATCH_TOKEN:token};
 
-test('UTC cron covers exactly 34 JST ticks within verified operating hours',()=>{
+test('UTC cron covers exactly 68 JST ticks within verified operating hours',()=>{
  const config=JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
  assert.deepEqual(config.triggers.crons,[CRON]);
  assert.equal(config.workers_dev,false);assert.equal(config.preview_urls,false);
  assert.equal(config.d1_databases,undefined);
  const ticks=[];
- for(let h=0;h<24;h++)for(const m of [7,37])if(h<=14||h>=22)ticks.push([(h+9)%24,m]);
+ for(let h=0;h<24;h++)for(const m of [7,22,37,52])if(h<=14||h>=22)ticks.push([(h+9)%24,m]);
  ticks.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
- assert.equal(ticks.length,34);assert.deepEqual(ticks[0],[7,7]);assert.deepEqual(ticks.at(-1),[23,37]);
+ assert.equal(CRON,'7,22,37,52 0-14,22-23 * * *');
+ assert.equal(ticks.length,68);assert.deepEqual(ticks[0],[7,7]);assert.deepEqual(ticks.at(-1),[23,52]);
+ assert.ok(ticks.slice(1).every((tick,i)=>tick[0]*60+tick[1]-ticks[i][0]*60-ticks[i][1]===15));
 });
 
 test('scheduled handler creates one exact GitHub monitoring request, not connectivity probe',async()=>{
@@ -64,7 +66,7 @@ test('GitHub 2026 HTTP 200 run response is accepted only with exact repository i
 
 test('07:00 JST boundary, delayed midnight, malformed events and missing token fail closed',async()=>{
  let count=0;const fetcher=async()=>{count++;return new Response(null,{status:204});};
- for(const iso of ['2026-11-03T21:37:00Z','2026-11-04T15:07:00Z']){
+ for(const iso of ['2026-11-03T21:52:00Z','2026-11-04T15:07:00Z']){
   const ms=Date.parse(iso);assert.equal((await dispatchScheduled(event(ms),env,{fetcher,clock:()=>ms+1})).status,'SKIPPED');
  }
  assert.equal((await dispatchScheduled(event(),env,{fetcher,clock:()=>Date.parse('2026-11-04T15:01:00Z')})).status,'SKIPPED');
@@ -72,10 +74,26 @@ test('07:00 JST boundary, delayed midnight, malformed events and missing token f
   assert.equal((await dispatchScheduled(c,env,{fetcher,clock:()=>at})).status,'FAILED');
  assert.equal((await dispatchScheduled(event(),{}, {fetcher,clock:()=>at})).reason,'GITHUB_CREDENTIAL_MISSING');
  assert.equal(count,0);
- for(const iso of ['2026-11-03T22:07:00Z','2026-11-04T14:37:00Z']){
+ for(const iso of ['2026-11-03T22:07:00Z','2026-11-04T14:52:00Z',
+   '2026-12-31T22:22:00Z','2027-01-01T00:37:00Z']){
   const ms=Date.parse(iso);assert.equal((await dispatchScheduled(event(ms),env,{fetcher,clock:()=>ms+1})).status,'DISPATCH_ACCEPTED');
  }
- assert.equal(count,2);
+ assert.equal(count,4);
+});
+
+test('new minutes dispatch; old cron and off-minute events cannot dispatch',async()=>{
+ let count=0;const fetcher=async()=>{count++;return new Response(null,{status:204});};
+ for(const minute of [7,22,37,52]){
+  const ms=Date.parse(`2026-11-04T10:${minute.toString().padStart(2,'0')}:00Z`);
+  assert.equal((await dispatchScheduled(event(ms),env,{fetcher,clock:()=>ms+1})).status,'DISPATCH_ACCEPTED');
+ }
+ for(const minute of [0,6,8,15,21,23,30,36,38,45,51,53,59]){
+  const ms=Date.parse(`2026-11-04T10:${minute.toString().padStart(2,'0')}:00Z`);
+  assert.equal((await dispatchScheduled(event(ms),env,{fetcher,clock:()=>ms+1})).reason,'INVALID_SCHEDULE_MINUTE');
+ }
+ assert.equal((await dispatchScheduled({...event(),cron:'7,37 0-14,22-23 * * *'},env,
+   {fetcher,clock:()=>at+1})).reason,'INVALID_SCHEDULE_EVENT');
+ assert.equal(count,4);
 });
 
 test('same isolate does not overlap; next sequential invocation can recover',async()=>{
