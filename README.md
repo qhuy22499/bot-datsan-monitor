@@ -241,6 +241,14 @@ D1 identity/receipts, kiểm tra UNCERTAIN và quan sát run mới thực COMPLE
 
 **execution_allowed=false; auto_booking_allowed=false.**
 
+Ngày trong tin SEND/EDIT được trình bày `T2 16/11/2026` … `CN 22/11/2026` bởi
+`monitor/display.py` tại lớp adapter; renderer generated và ngày ISO trong D1
+giữ nguyên. Workflow `availability-summary-test.yml` chỉ phục vụ một bản tổng
+hợp TEST mới do admin yêu cầu ngày 04/11/2026, manual-only, cùng concurrency
+group và không nhận D1 secrets. Sau lượt được duyệt, workflow được disable;
+không phải tính năng gửi tổng hợp định kỳ. Bản tổng hợp yêu cầu COMPLETE
+ALL_BOOKABLE, từng observation <=5 phút và không cắt mất slot khi phân trang.
+
 **Rollback về 30 phút:** thay đồng bộ `cron/wrangler.jsonc`, `CRON` và minute
 allowlist trong `cron/src/index.mjs` về `7,37 0-14,22-23 * * *`, phút `[7,37]`;
 cập nhật tests/manifest, kiểm tra targeted tests rồi deploy **cùng** Worker

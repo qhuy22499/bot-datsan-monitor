@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from .shared.domain import JST, Slot, iso_time, parse_date, parse_time, require
 from .shared.scope import notification_eligibility
 from .shared.formatting import render_original
+from .display import display_date
 
 
 def key(*parts):
@@ -21,7 +22,7 @@ def slot_id(slot):
 
 
 def render(batch, members, opportunities, slots, scan):
-    """Only adapt the old renderer's three read queries, not its formatting rules.
+    """Adapt three read queries and date presentation; generated core is unchanged.
 
     Cloud batches contain <=24 items, so nothing is hidden. No command ingress
     is packaged; replace the old /available hint with a static public UI link.
@@ -33,6 +34,8 @@ def render(batch, members, opportunities, slots, scan):
         rows.append({"usage_date": slot["day"], "court": slot["court"], "start_time": slot["start"],
                      "end_time": slot["end"], "item_state": "INVALIDATED" if opp["reason"] == "OUT_OF_SCOPE" else opp["state"], "invalidation_reason": opp["reason"]})
     rows.sort(key=lambda r: (r["usage_date"], r["start_time"], r["court"]))
+    for row in rows:
+        row['usage_date'] = display_date(row['usage_date'])
     observed = min(slots[opportunities[m["opportunity_id"]]["slot_id"]]["observed_at"] for m in members)
 
     class Result:
@@ -44,7 +47,8 @@ def render(batch, members, opportunities, slots, scan):
             if "FROM mvp_notification_batches" in sql:
                 return Result({"batch_kind": batch["kind"], "scan_id": batch["scan_id"]})
             if "FROM monitor_runs" in sql:
-                return Result(scan)
+                return Result({**scan, 'window_start': display_date(scan['window_start']),
+                               'window_end': display_date(scan['window_end'])})
             if "min(c.observed_at)" in sql:
                 return Result([observed])
             raise ValueError("UNSUPPORTED_RENDER_READ")

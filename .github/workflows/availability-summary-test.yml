@@ -1,0 +1,44 @@
+name: One approved current availability summary (TEST only)
+run-name: TEST current availability summary · ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_test_delivery:
+        description: One admin-requested public scan and TEST summary; no D1 writes
+        type: boolean
+        default: false
+      request_id:
+        description: Single approved display-validation request
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: katsushika-public-monitor-test
+  cancel-in-progress: false
+jobs:
+  summary:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_test_delivery && inputs.request_id == 'weekday-display-20261104' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - run: |
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
+      - run: python -m playwright install --with-deps chromium
+      - name: Offline display and no-storage summary contract
+        run: python -B -m unittest tests.test_summary_display -v
+      - name: One fresh ALL_BOOKABLE scan and independent TEST summary
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_TEST_CHAT_ID: ${{ secrets.TELEGRAM_TEST_CHAT_ID }}
+          TELEGRAM_DESTINATION: TEST
+          PYTHONDONTWRITEBYTECODE: '1'
+          DEBUG: ''
+          PWDEBUG: ''
+        run: python -B -m monitor.test_summary --send-test-once
