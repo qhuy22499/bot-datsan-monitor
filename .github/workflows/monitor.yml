@@ -20,11 +20,8 @@ on:
         description: Optional non-secret trigger correlation ID
         type: string
         default: ''
-  # Authorized TEST trial: 34 runs/day, 07:07..23:37 JST.
-  # Delayed/skipped runs are acceptable; runtime also checks verified hours.
-  schedule:
-    - cron: '7,37 7-23 * * *'
-      timezone: Asia/Tokyo
+  # Sole automatic trigger: Cloudflare bot-datsan-cron -> workflow_dispatch.
+  # No native GitHub schedule; no second sender. Runtime still checks JST hours.
 permissions:
   contents: read
 concurrency:
@@ -32,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   monitor:
-    if: ${{ github.event_name == 'schedule' || inputs.confirm_test_delivery }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_test_delivery }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

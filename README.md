@@ -173,7 +173,31 @@ npx wrangler deploy --config wrangler.deploy.json
     Không chạy lại mù quáng nếu kết quả gửi UNCERTAIN. Probe đã LIVE PASS ngày
     03/11/2026, message_id 16; không cần bật probe khi chạy monitoring bình thường.
 
-## Scheduled trial — chỉ Group TEST
+## Cloudflare Cron trial — chỉ Group TEST
+
+Nguồn kích hoạt tự động hiện tại: **Worker `bot-datsan-cron` → GitHub
+workflow_dispatch → Python/Playwright → D1 → Telegram Group TEST**. GitHub native
+schedule đã bị loại khỏi workflow sau hai controlled dispatch LIVE COMPLETE ngày
+04/11/2026. Không có sender thứ hai; Storage Worker và baseline QUIET giữ nguyên.
+
+Cron Worker chỉ gọi GitHub API, không có D1 binding, không chạy Chromium hoặc gửi
+Telegram. Source ở `cron/`, dùng Wrangler đã pin trong `worker/node_modules`.
+Secret duy nhất: **GITHUB_DISPATCH_TOKEN**, fine-grained PAT chỉ repository này,
+Actions read/write; nhập qua Worker Secrets, không commit. Theo dõi expiry và
+rotation của token. Không sử dụng credential GitHub rộng quyền từ máy local.
+
+`cron/wrangler.jsonc`: UTC `7,37 0-14,22-23 * * *` = **07:07–23:37 JST**, 34 lượt/ngày.
+Production `workers_dev=false`, `preview_urls=false`; HTTP handler luôn 404.
+Không có endpoint công khai để kích hoạt job. Không tự deploy file config này
+nếu chưa kiểm tra đúng account, thử dispatch và tắt nguồn schedule khác.
+
+Cron gọi đúng `monitor.yml`, `main`, `confirm_test_delivery=true`,
+`telegram_transport_test=false`, metadata `dispatch_source=cloudflare_cron` và
+`trigger_id`. Input metadata không cấp quyền booking. GitHub concurrency cùng
+lease/fencing/outbox D1 chống overlap và gửi trùng. Mỗi event chỉ POST một lần;
+UNCERTAIN/HTTP 5xx không tự resend. Dùng trigger_id để reconcile Actions history.
+HTTP 200 chỉ được chấp nhận với schema run ID/URLs đúng repository; vẫn hỗ trợ
+204 cũ. Không coi dispatch accepted là scan COMPLETE.
 
 Manual Actions + Worker/D1 LIVE đã PASS hai lượt ngày 03/11/2026, mỗi lượt
 31 ngày/434 ô, baseline QUIET; không tạo notification trùng.
@@ -182,8 +206,8 @@ Người vận hành chấp nhận độ trễ 30–60 phút hoặc bỏ một l
 CPU có thể vượt 10ms trong burst; không bảo đảm mọi request luôn thành công.
 Giữ source lock/fencing, atomic commit và UNCERTAIN khi kết quả gửi chưa rõ;
 lượt lỗi không được coi COMPLETE và lượt sau phải quét mới để xác minh phục hồi.
-Cron `7,37 7-23 * * *`, timezone **Asia/Tokyo**, 34 runs/ngày 07:07–23:37 JST.
-Giữ manual confirmation cho workflow_dispatch; schedule không cần manual input.
+Giữ manual confirmation cho workflow_dispatch; Cron Worker gửi confirmation
+TEST rõ ràng. Không bật lại GitHub native cron khi Cloudflare Cron đang hoạt động.
 Tiếp tục theo dõi quotas, lịch lễ, kỳ thiếu ngày tương ứng và không hai sender.
 Dù cron delayed, runtime
 vẫn kiểm giờ thực và date ở JST; qua nửa đêm scan không COMPLETE. Cron không
@@ -204,10 +228,14 @@ job hiện tại kết thúc để ghi receipt/release lease. Không chạy Wind
 song. Nếu buộc phải cancel do nguy cơ spam, kiểm tra IN_FLIGHT/UNCERTAIN trước khi
 khởi động lại, không reset baseline hoặc resend. Không tự bật Paid.
 
-**Inactivity:** GitHub có thể tự disable schedule sau 60 ngày không có activity
-trong public repo. Kiểm tra Actions, chọn Enable workflow rồi kiểm tra tick tiếp
-theo; nếu cần, commit sửa cron có chủ đích. Không tạo commit/keepalive định kỳ chỉ
-để lách inactivity. Re-enable không thay identity/baseline D1; kiểm tra last_success
-và outbox trước khi cho gửi tiếp.
+**Tạm dừng trigger lâu hơn:** đặt `triggers.crons=[]` rồi deploy đúng Cron Worker,
+hoặc xóa Cron Trigger trong Dashboard. Chỉ bỏ property không bảo đảm xóa trigger.
+Không xóa Worker, database hoặc baseline. Nếu chỉ disable workflow GitHub thì
+Cron vẫn có thể gọi API và nhận lỗi; cần dừng cả trigger khi bảo trì kéo dài.
+
+**Inactivity/token:** chính sách auto-disable 60 ngày của GitHub native schedule
+không phải lý do tự thêm keepalive cho luồng workflow_dispatch. Vẫn kiểm tra
+workflow active, account/Actions permissions và PAT expiry. Khi khôi phục, giữ
+D1 identity/receipts, kiểm tra UNCERTAIN và quan sát run mới thực COMPLETE.
 
 **execution_allowed=false; auto_booking_allowed=false.**

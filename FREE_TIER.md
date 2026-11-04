@@ -59,6 +59,17 @@ phép bật sau GitHub → Telegram TEST PASS; dùng timezone Asia/Tokyo, phút 
 giờ 7–23. Không coi cấu hình lịch là bằng chứng trial dài hạn đã PASS.
 Xem [GitHub schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
+**Cập nhật 04/11/2026:** sau kiểm thử controlled LIVE, nguồn kích hoạt chuyển
+sang Worker `bot-datsan-cron`, GitHub native schedule OFF. Cron Cloudflare UTC
+`7,37 0-14,22-23 * * *`, 34 lượt/ngày, chỉ dispatch cùng workflow cũ. Dự toán
+no-change: khoảng 204 Storage Worker requests + 34 Cron Worker invocations/ngày;
+mỗi Cron có một GitHub subrequest. Không thêm D1 writes bên trong Cron Worker.
+Free hỗ trợ 5 Cron Triggers/account; trước cutover account có 0. Không bật Paid.
+Giữ Worker HTTP 404/workers.dev OFF; token dispatch riêng chỉ Actions write trên
+repo đích. Không chạy hai scheduler song song hoặc hứa Cron có SLA chính xác.
+Xem [Workers limits](https://developers.cloudflare.com/workers/platform/limits/),
+[Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+
 Usage snapshot ngày 03/11/2026 trước khi bật lịch: 44.659 D1 rows read,
 13.841 rows written, 575 read queries, 173 write queries; Worker 81 requests,
 0 runtime errors, CPU P50 5,518ms / P99 34,068ms. Đây là aggregate ngày gồm
