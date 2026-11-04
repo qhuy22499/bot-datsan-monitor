@@ -24,20 +24,32 @@ test('scheduled handler creates one exact GitHub monitoring request, not connect
  const result=await dispatchScheduled(controller,env,{clock:()=>at+1,fetcher:async(...args)=>{calls.push(args);return new Response(null,{status:204});}});
  assert.equal(result.status,'DISPATCH_ACCEPTED');assert.equal(controller.noRetryCalled,true);
  assert.equal(calls.length,1);assert.equal(calls[0][0],DISPATCH_URL);
- const request=calls[0][1];assert.equal(request.method,'POST');assert.equal(request.redirect,'error');
+ const request=calls[0][1];assert.equal(request.method,'POST');assert.equal(request.redirect,'manual');
  assert.deepEqual(JSON.parse(request.body),{ref:'main',inputs:{confirm_test_delivery:true,telegram_transport_test:false,dispatch_source:'cloudflare_cron',trigger_id:`cfcron-${at}`}});
  assert.equal(request.headers.Authorization,'Bearer '+token);
  assert.equal(JSON.stringify(result).includes(token),false);
 });
 
 test('HTTP rejection, rate limit, server ambiguity and transport loss never retry',async()=>{
- for(const status of [401,403,422,429,500,503,200]){
+ for(const status of [302,401,403,422,429,500,503,200]){
   let count=0;const result=await dispatchScheduled(event(),env,{clock:()=>at+1,fetcher:async()=>{count++;return new Response('',{status});}});
   assert.equal(count,1);assert.equal(result.status,status>=500||status===200?'UNCERTAIN':'FAILED');
   assert.equal(result.http,status);assert.equal(JSON.stringify(result).includes(token),false);
  }
  let count=0;const result=await dispatchScheduled(event(),env,{clock:()=>at+1,fetcher:async()=>{count++;throw new Error('sensitive '+token);}});
  assert.equal(count,1);assert.equal(result.status,'UNCERTAIN');assert.equal(JSON.stringify(result).includes(token),false);
+});
+
+test('Cloudflare redirect compatibility never follows redirect or leaks Authorization',async()=>{
+ let count=0;
+ const fetcher=async(url,options)=>{
+  count++;if(options.redirect==='error')throw new TypeError('Invalid redirect value');
+  assert.equal(options.redirect,'manual');assert.equal(url,DISPATCH_URL);
+  return new Response(null,{status:302,headers:{Location:'https://other.invalid/'}});
+ };
+ const result=await dispatchScheduled(event(),env,{clock:()=>at+1,fetcher});
+ assert.equal(result.status,'FAILED');assert.equal(result.http,302);assert.equal(count,1);
+ assert.equal(JSON.stringify(result).includes(token),false);
 });
 
 test('07:00 JST boundary, delayed midnight, malformed events and missing token fail closed',async()=>{

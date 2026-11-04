@@ -26,7 +26,9 @@ export async function dispatchScheduled(controller, env, {
   const started = performance.now();
   try {
     const response = await fetcher(DISPATCH_URL, {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000),
+      // Workers supports follow/manual, not redirect:error. Never follow a
+      // redirect carrying Authorization; reject 3xx below instead.
+      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(20000),
       headers: {'Authorization': `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
         'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
         'User-Agent': 'BotDatSan-Cloudflare-Cron/1.0', 'X-GitHub-Api-Version': '2026-03-10'},
