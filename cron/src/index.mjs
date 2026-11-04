@@ -41,6 +41,19 @@ export async function dispatchScheduled(controller, env, {
     // Do not read/log raw API descriptions, headers, request bodies, or tokens.
     if (response.status === 204)
       return {status: 'DISPATCH_ACCEPTED', trigger_id: triggerId, http: 204, elapsed_ms};
+    // GitHub API 2026-03-10 returns HTTP 200 with run identity. Require the
+    // documented schema and exact repository URLs; arbitrary 200 is uncertain.
+    if (response.status === 200) {
+      try {
+        const text = await response.text();
+        const data = text.length <= 4096 ? JSON.parse(text) : null;
+        if (data && Number.isSafeInteger(data.workflow_run_id) && data.workflow_run_id > 0
+            && data.run_url === `https://api.github.com/repos/qhuy22499/bot-datsan-monitor/actions/runs/${data.workflow_run_id}`
+            && data.html_url === `https://github.com/qhuy22499/bot-datsan-monitor/actions/runs/${data.workflow_run_id}`)
+          return {status: 'DISPATCH_ACCEPTED', trigger_id: triggerId, http: 200, elapsed_ms,
+            run_id: data.workflow_run_id, run_url: data.html_url};
+      } catch { /* Lost/invalid success body is ambiguous; never resend here. */ }
+    }
     if (response.status >= 500 || (response.status >= 200 && response.status < 300))
       return {status: 'UNCERTAIN', reason: 'GITHUB_DISPATCH_RESULT_UNCERTAIN', trigger_id: triggerId, http: response.status, elapsed_ms};
     return {status: 'FAILED', reason: 'GITHUB_DISPATCH_REJECTED', trigger_id: triggerId, http: response.status, elapsed_ms};

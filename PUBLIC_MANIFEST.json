@@ -51,8 +51,8 @@
     "worker/test/miniflare.test.mjs": "72dccf6381a22537dc0b74ff15ec7e51621b304937f26326567cfc367374a862",
     "worker/test/server.mjs": "9afa8035954932f3457b3220025be52f265d2cce42c9775b7f8b1c9111159aa5",
     "worker/wrangler.jsonc": "09c5f787434141e26366239d4a38224db604af97cdaf9b871071e52e9e931892",
-    "cron/src/index.mjs": "c3ef78ae1d5535aa35aec096459c0adde6932dac2701312655002c7136f378f9",
-    "cron/test/cron.test.mjs": "f89feb36487d0db4ddf2919ef22d7633e981fe68f8bb582c3dd0ed075af88c9c",
+    "cron/src/index.mjs": "edc83f161c9788b7295b5bc186f1506122ffff0444bf2441b390197b8d1837b5",
+    "cron/test/cron.test.mjs": "82a2d5214d39ca560b5b09ef0b182213689fb0c45c57707fd8b5bee068d412b0",
     "cron/wrangler.jsonc": "2e9b6f4bf996a3108659ef583870eaffe4e19772720920065126adbc345443f7"
   }
 }

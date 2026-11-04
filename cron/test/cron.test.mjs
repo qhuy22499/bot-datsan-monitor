@@ -52,6 +52,16 @@ test('Cloudflare redirect compatibility never follows redirect or leaks Authoriz
  assert.equal(JSON.stringify(result).includes(token),false);
 });
 
+test('GitHub 2026 HTTP 200 run response is accepted only with exact repository identity',async()=>{
+ const valid={workflow_run_id:17,run_url:'https://api.github.com/repos/qhuy22499/bot-datsan-monitor/actions/runs/17',
+  html_url:'https://github.com/qhuy22499/bot-datsan-monitor/actions/runs/17'};
+ for(const [data,accepted] of [[valid,true],[{...valid,html_url:'https://other.invalid/'},false],[{ok:true},false]]) {
+  let count=0;const result=await dispatchScheduled(event(),env,{clock:()=>at+1,fetcher:async()=>{count++;return Response.json(data);}});
+  assert.equal(count,1);assert.equal(result.status,accepted?'DISPATCH_ACCEPTED':'UNCERTAIN');
+  if(accepted)assert.equal(result.run_id,17);
+ }
+});
+
 test('07:00 JST boundary, delayed midnight, malformed events and missing token fail closed',async()=>{
  let count=0;const fetcher=async()=>{count++;return new Response(null,{status:204});};
  for(const iso of ['2026-11-03T21:37:00Z','2026-11-04T15:07:00Z']){
