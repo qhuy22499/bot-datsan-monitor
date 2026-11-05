@@ -57,6 +57,21 @@
     "monitor/test_summary.py": "4469747e28a8d7678aaef3af5284e9e26947ba185cc5d2aabaa0afdaa33f8bad",
     ".github/workflows/availability-summary-test.yml": "de7b5625cb03ec0c147600587fde0fff0cd3dfa28279751084188125d05655ac",
     "monitor/display.py": "f52824e6d1a831f817deb75dbad82b16bcee8beb79e5c90eda8c041579b6b3d5",
-    "tests/test_summary_display.py": "efb0ec1149558212c0a8949d23dc3b86f2644f4e732b8a1efe18aedbf9f69e30"
+    "tests/test_summary_display.py": "efb0ec1149558212c0a8949d23dc3b86f2644f4e732b8a1efe18aedbf9f69e30",
+    "sheets/src/coordinator.mjs": "6d1198aac9da738746040c843d739de1f327b52bb37edb959e8d3bf6ca2fe957",
+    "sheets/test/store.test.mjs": "fd45f9654aa9abc5d3b7f92de2fbcdcf736ca7d3d442bb8353dd2b22abe3484c",
+    "sheets/README.md": "2b5ffda7a4991c1a8b82694d03b2d1a55a1c1c9f96c216b7660d1a3bff0339d5",
+    "sheets/wrangler.jsonc": "00dcf4ea7376d22ab8e3c27b3c30ed2dcd4cd178e41e2e0e5bc1e70fe9480a70",
+    "sheets/src/index.mjs": "3318cf7be8da0a55cae38f66797b70818a9ed4a6c0945cb36e6b6401693fcb3f",
+    "sheets/test/google.test.mjs": "a7a9e9420d88abc6f36f62f62528fa59268797aa9b680f712676eb120fd04020",
+    "sheets/test/read-model.test.mjs": "52fed502b16aaa9c344728abc707a99bc88ce35b52b6e23ec2c9451275754631",
+    "sheets/package.json": "b6ccd0879e277794ec1d2d67730b78e3c087906a23806f49d14932fe9c66dfed",
+    "sheets/src/google.mjs": "0bb93547911d2f2a9327fca184e113749772af764a7205fb96120f55e56bb38c",
+    "sheets/src/store.mjs": "a7d1d28e0c2682ff82c822b1c4c72d2a4ae5667246ff557ecb187115279617aa",
+    "sheets/src/telegram.mjs": "fe52da9a71948932bd9a8e9edeb4c88b453986c66015ef2458293910b48f1007",
+    "sheets/src/read-model.mjs": "ef889cdc0cc7a6c909b238fed4aa568ebb165700edaccea9282a631247c836f2",
+    "sheets/test/coordinator.test.mjs": "387dec3569992e7ebcbe921f9a67c9b5d403110452924d5023e5a77c7ee87418",
+    "sheets/test/telegram.test.mjs": "b7fecd49deaab42316d503e8b32329abbba51fe441aeb2bf9bf9935af00ea5f1",
+    "sheets/test/worker.test.mjs": "1bdece4300916692b5e75cf9120e2cba7650ec266975134f10a78a4b698fec0b"
   }
 }

@@ -1,0 +1,23 @@
+{
+  "name": "bot-datsan-sheets",
+  "main": "src/index.mjs",
+  "compatibility_date": "2025-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {"enabled": false},
+  "vars": {
+    "GOOGLE_SPREADSHEET_ID": "1Qj5UBVpXQ6M_FfsYvCYbj_nnKlRRya7cWrcMR7Ifeqc",
+    "SHEETS_SCHEDULE_ENABLED": "false",
+    "TELEGRAM_WEBHOOK_ENABLED": "false"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "bot-datsan-monitor-db",
+    "database_id": "b0e8dfdb-42d6-410c-b950-e3fd31710c11"
+  }],
+  "durable_objects": {
+    "bindings": [{"name": "SHEETS_COORDINATOR", "class_name": "SheetsCoordinator"}]
+  },
+  "migrations": [{"tag": "sheets-coordinator-v1", "new_sqlite_classes": ["SheetsCoordinator"]}],
+  "triggers": {"crons": []}
+}
