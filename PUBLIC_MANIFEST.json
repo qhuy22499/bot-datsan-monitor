@@ -72,6 +72,6 @@
     "sheets/src/read-model.mjs": "ef889cdc0cc7a6c909b238fed4aa568ebb165700edaccea9282a631247c836f2",
     "sheets/test/coordinator.test.mjs": "387dec3569992e7ebcbe921f9a67c9b5d403110452924d5023e5a77c7ee87418",
     "sheets/test/telegram.test.mjs": "b7fecd49deaab42316d503e8b32329abbba51fe441aeb2bf9bf9935af00ea5f1",
-    "sheets/test/worker.test.mjs": "1bdece4300916692b5e75cf9120e2cba7650ec266975134f10a78a4b698fec0b"
+    "sheets/test/worker.test.mjs": "5088de2d9f3074cffb2e02732dc2224b829d36c1223b67db98eebde63af4fbf7"
   }
 }

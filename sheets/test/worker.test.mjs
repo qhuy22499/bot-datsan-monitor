@@ -202,3 +202,22 @@ test('disabled Phase1 flags prevent both webhook work and scheduled sync',async 
   await worker.scheduled({cron:SHEETS_CRON,scheduledTime:NOW,noRetry(){}},f.env);
   assert.equal(f.source.calls,0);assert.equal(f.sheet.reads,0);assert.equal(f.telegram.length,0);
 });
+
+test('Telegram reply rejection or lost receipt persists failure and duplicate webhooks never resend',async t=>{
+  for(const mode of ['forbidden','lost']) {
+    const f=await fixture(t),base=globalThis.fetch;let attempts=0;
+    t.mock.method(globalThis,'fetch',async(url,options)=>{
+      if(new URL(url).origin==='https://api.telegram.org') {
+        attempts++;
+        if(mode==='lost')throw new Error('offline response lost after possible send');
+        return Response.json({ok:false,error_code:403},{status:403});
+      }
+      return base(url,options);
+    });
+    await worker.fetch(f.request(9),f.env);await f.drain();
+    assert.equal(f.instance.store.getUpdate(9).state,mode==='lost'?'UNCERTAIN':'FAILED');
+    assert.equal(f.sheet.writes,1);assert.equal(attempts,1);
+    await f.restart();await worker.fetch(f.request(9),f.env);await f.drain();await f.instance.alarm();
+    assert.equal(attempts,1);assert.equal(f.sheet.writes,1);f.assertReadOnly();
+  }
+});
