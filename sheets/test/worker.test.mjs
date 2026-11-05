@@ -222,3 +222,93 @@ test('Telegram reply rejection or lost receipt persists failure and duplicate we
     assert.equal(attempts,1);assert.equal(f.sheet.writes,1);f.assertReadOnly();
   }
 });
+
+test('priority reads only D1, preserves command across duplicate/restart and never constructs Google adapter',async t=>{
+  const f=await fixture(t);delete f.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  assert.equal((await worker.fetch(f.request(1,{text:'/priority@OfflineTest_bot'}),f.env)).status,200);await f.drain();
+  const record=f.instance.store.getUpdate(1);
+  assert.equal(record.command,'priority');assert.equal(record.state,'SENT');
+  assert.equal(record.result.status,'READ');assert.equal(record.result.total,2);
+  assert.match(f.telegram[0].text,/T5 05\/11\/2026 · Sân A · 20:30–22:30/);
+  assert.doesNotMatch(f.telegram[0].text,/08:00–10:00/);
+  await f.restart();await worker.fetch(f.request(1,{text:'/available'}),f.env);await f.drain();
+  assert.equal(f.telegram.length,1);assert.equal(f.source.calls,1);
+  assert.equal(f.sheet.reads,0);assert.equal(f.sheet.writes,0);f.assertReadOnly();
+});
+
+test('priority can finish while available awaits Google; neither command changes the other lifecycle',async t=>{
+  const f=await fixture(t),gate=deferred();f.setGate(gate);
+  await worker.fetch(f.request(1),f.env);
+  await worker.fetch(f.request(2,{text:'/priority'}),f.env);
+  await f.instance.processUpdate(2);
+  assert.equal(f.telegram.length,1);assert.match(f.telegram[0].text,/SÂN TRỐNG PHÙ HỢP/);
+  gate.resolve();await f.drain();
+  assert.equal(f.telegram.length,2);assert.match(f.telegram[1].text,/Google Sheets: Đã cập nhật/);
+  assert.equal(f.instance.store.getUpdate(1).command,'available');
+  assert.equal(f.instance.store.getUpdate(2).command,'priority');assert.equal(f.sheet.writes,1);f.assertReadOnly();
+});
+
+test('priority D1 unavailable or missing COMPLETE replies with uncertainty rather than zero and no Google call',async t=>{
+  for(const missing of [false,true]) {
+    const f=await fixture(t);
+    f.env.DB={prepare(){if(!missing)throw new Error('offline unavailable');return{async all(){return{success:true,results:[]};}};}};
+    await worker.fetch(f.request(7,{text:'/priority'}),f.env);await f.drain();
+    assert.equal(f.telegram.length,1);assert.match(f.telegram[0].text,/Không thể xác minh/);
+    assert.doesNotMatch(f.telegram[0].text,/Hiện chưa có|Tổng: 0/);
+    assert.equal(f.instance.store.getUpdate(7).result.code,missing?'NO_COMPLETE_SCAN':'D1_UNAVAILABLE');
+    assert.equal(f.sheet.reads,0);assert.equal(f.sheet.writes,0);f.assertReadOnly();
+  }
+});
+
+test('priority excludes today once a slot starts and expired inbox uses bounded failure',async t=>{
+  const f=await fixture(t);t.mock.method(Date,'now',()=>Date.parse('2026-11-05T20:30:00+09:00'));
+  await worker.fetch(f.request(1,{text:'/priority'}),f.env);await f.drain();
+  assert.match(f.telegram[0].text,/Hiện chưa có sân trống phù hợp/);
+  assert.match(f.telegram[0].text,/Dữ liệu đã cũ/);
+  f.instance.store.accept({updateId:2,chatId:'-1001',command:'priority',receivedAt:NOW-16000,deadlineAt:NOW-1000});
+  await f.instance.processUpdate(2);
+  assert.equal(f.instance.store.getUpdate(2).result.code,'PRIORITY_READ_TIMEOUT');
+  assert.doesNotMatch(f.telegram[1].text,/Hiện chưa có|Tổng: 0/);
+  assert.equal(f.sheet.reads,0);assert.equal(f.sheet.writes,0);f.assertReadOnly();
+});
+
+test('priority lost Telegram receipt remains UNCERTAIN and never sends again on duplicate/restart',async t=>{
+  const f=await fixture(t);let attempts=0;
+  t.mock.method(globalThis,'fetch',async()=>{attempts++;throw new Error('offline response lost');});
+  await worker.fetch(f.request(1,{text:'/priority'}),f.env);await f.drain();
+  assert.equal(f.instance.store.getUpdate(1).state,'UNCERTAIN');assert.equal(attempts,1);
+  await f.restart();await worker.fetch(f.request(1,{text:'/priority'}),f.env);await f.drain();await f.instance.alarm();
+  assert.equal(attempts,1);assert.equal(f.sheet.reads,0);assert.equal(f.sheet.writes,0);f.assertReadOnly();
+});
+
+test('priority warns on FAILED/PARTIAL monitoring, but rejects UNKNOWN instead of rendering empty data',async t=>{
+  for(const mode of ['FAILED','PARTIAL','UNKNOWN']) {
+    const f=await fixture(t);
+    f.source.db.setAuthorizer(null);
+    if(mode==='UNKNOWN')f.source.db.exec("UPDATE slots SET status='UNKNOWN' WHERE court='A' AND start='20:30'");
+    else f.source.db.prepare('UPDATE source SET last_status=? WHERE id=1').run(mode);
+    f.source.before=Buffer.from(f.source.db.serialize());
+    f.source.db.setAuthorizer(action=>[sqlite.SQLITE_SELECT,sqlite.SQLITE_READ,sqlite.SQLITE_FUNCTION].includes(action)?sqlite.SQLITE_OK:sqlite.SQLITE_DENY);
+    await worker.fetch(f.request(1,{text:'/priority'}),f.env);await f.drain();
+    if(mode==='UNKNOWN'){
+      assert.equal(f.instance.store.getUpdate(1).result.status,'FAILED');
+      assert.doesNotMatch(f.telegram[0].text,/Hiện chưa có|Tổng: 0/);
+    }else{
+      assert.equal(f.instance.store.getUpdate(1).result.total,2);
+      assert.match(f.telegram[0].text,/snapshot COMPLETE/);
+      assert.equal(f.instance.store.getUpdate(1).result.sourceWarning,`LATEST_SCAN_${mode}`);
+    }
+    assert.equal(f.sheet.reads,0);assert.equal(f.sheet.writes,0);f.assertReadOnly();
+  }
+});
+
+test('priority stalled D1 is bounded by the inbox deadline and a late read never sends twice',async t=>{
+  const f=await fixture(t),gate=deferred();
+  f.env.DB={prepare(){return{all:()=>gate.promise};}};
+  f.instance.store.accept({updateId:1,chatId:'-1001',command:'priority',receivedAt:NOW-14975,deadlineAt:NOW+25});
+  await f.instance.processUpdate(1);
+  assert.equal(f.instance.store.getUpdate(1).result.code,'PRIORITY_READ_TIMEOUT');
+  assert.equal(f.telegram.length,1);assert.doesNotMatch(f.telegram[0].text,/Hiện chưa có|Tổng: 0/);
+  gate.resolve({success:true,results:[]});await Promise.resolve();
+  assert.equal(f.telegram.length,1);assert.equal(f.sheet.reads,0);f.assertReadOnly();
+});

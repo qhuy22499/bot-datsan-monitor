@@ -3,9 +3,22 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync, constants as sqlite} from 'node:sqlite';
 import {READ_SQL, SLOT_TIMES, ReadModelError, readAvailability, projectAvailability} from '../src/read-model.mjs';
+import {priorityMessage} from '../src/telegram.mjs';
 
 const SCAN_ID = 'a'.repeat(32);
 const NOW = Date.parse('2026-11-05T07:02:00+09:00');
+
+test('priority rendering consumes existing weekday/weekend/holiday labels, and exposes missing calendar coverage',()=>{
+  for(const [day,expected] of [['2026-11-06',2],['2026-11-07',6],['2026-11-08',6],['2026-11-23',6]]) {
+    const data=projectAvailability(fixture({start:day}),Date.parse(`${day}T07:02:00+09:00`));
+    const message=priorityMessage({status:'READ',...data},'offline_spreadsheet_identifier_only');
+    assert.equal(message.total,expected);assert.equal(message.unverifiedTotal,0);
+    if(expected===6){assert.match(message.text,/ƯU TIÊN 1 \(2\)/);assert.match(message.text,/ƯU TIÊN 2 \(2\)/);assert.match(message.text,/CHỈ THÔNG BÁO \(2\)/);}
+  }
+  const unknown=projectAvailability(fixture({start:'2028-01-04'}),Date.parse('2028-01-04T07:02:00+09:00'));
+  const message=priorityMessage({status:'READ',...unknown},'offline_spreadsheet_identifier_only');
+  assert.equal(message.total,0);assert.equal(message.unverifiedTotal,6);assert.match(message.text,/CẦN XÁC MINH/);
+});
 function fixture({start = '2026-11-05', days = 1, available = () => true} = {}) {
   const scan = {
     id: SCAN_ID, startedAt: `${start}T07:00:00+09:00`,

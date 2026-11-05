@@ -15,7 +15,7 @@ const setup = () => {
   return {db, sql, statements, store: new CoordinatorStore(sql)};
 };
 const update = (id = 1, receivedAt = 1000) => ({
-  updateId: id, chatId: '-100123456', receivedAt, deadlineAt: receivedAt + 15000,
+  updateId: id, chatId: '-100123456', command:'available', receivedAt, deadlineAt: receivedAt + 15000,
 });
 
 test('SQLite coordinator owns only isolated tables; sync state survives a new wrapper', () => {
@@ -151,4 +151,26 @@ test('Telegram update zero is valid consistently while message identifiers remai
     assert.equal(store.finishUpdate(0, 'SENT', {messageId: 1}).messageId, 1);
     assert.equal(store.accept(update(0)).accepted, false);
   } finally { db.close(); }
+});
+
+test('additive DO inbox migration preserves legacy receipts and command identity through restart',()=>{
+  const db=new DatabaseSync(':memory:');
+  try {
+    db.exec(`CREATE TABLE sheets_webhook_inbox (
+      update_id INTEGER PRIMARY KEY,chat_id TEXT NOT NULL,received_at INTEGER NOT NULL,
+      deadline_at INTEGER NOT NULL,state TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '{}');
+      INSERT INTO sheets_webhook_inbox VALUES(1,'-100123456',1000,16000,'SENT','{"messageId":81}');`);
+    const sql={exec(text,...args){const s=db.prepare(text);const rows=s.columns().length?s.all(...args):(s.run(...args),[]);return{toArray:()=>rows};}};
+    const store=new CoordinatorStore(sql);
+    assert.equal(store.getUpdate(1).command,'available');assert.equal(store.getUpdate(1).messageId,81);
+    const priority={...update(2),command:'priority'};
+    assert.equal(store.accept(priority).accepted,true);
+    store.claimUpdate(2);store.claimReply(2);store.finishUpdate(2,'UNCERTAIN',{code:'TELEGRAM_SEND_UNCONFIRMED'});
+    const restarted=new CoordinatorStore(sql);restarted.recover();
+    assert.equal(restarted.getUpdate(1).state,'SENT');assert.equal(restarted.getUpdate(2).command,'priority');
+    assert.equal(restarted.getUpdate(2).state,'UNCERTAIN');
+    assert.equal(restarted.accept({...priority,command:'available'}).record.command,'priority');
+    assert.throws(()=>restarted.accept({...update(3),command:'other'}),/INVALID_INBOX_UPDATE/);
+    assert.equal(db.prepare('PRAGMA table_info(sheets_webhook_inbox)').all().filter(r=>r.name==='command').length,1);
+  }finally{db.close();}
 });

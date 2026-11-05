@@ -47,10 +47,22 @@ của DO mới, hoàn toàn không phải D1 nghiệp vụ. Không migration D1.
 
 ## Telegram
 
-Public route duy nhất POST `/telegram/webhook`, mặc định tắt. Xác minh header
+Public route duy nhất POST `/telegram/webhook`. Xác minh header
 `X-Telegram-Bot-Api-Secret-Token`, đúng Group TEST, `/available` hoặc
 `/available@TELEGRAM_BOT_USERNAME`. Thành viên trong Group đều có thể gọi.
 Không public manual-sync endpoint; không getUpdates/long polling trong Worker.
+
+`/priority` và `/priority@TELEGRAM_BOT_USERNAME` chỉ đọc snapshot COMPLETE từ D1,
+không tạo Google adapter hoặc đồng bộ Sheets. Trả một tin phân nhóm Ưu tiên 1,
+Ưu tiên 2, Chỉ thông báo; bỏ giờ Thông thường. Khi thiếu lịch lễ, giữ riêng các
+khung giờ cần xác minh và không tính chúng vào tổng đã xác định. Danh sách dài
+được rút gọn dưới 4096 ký tự, có tổng từng nhóm và link Sheets (cần đối chiếu thời
+điểm cập nhật trên Sheets). Không suy luận lỗi đọc D1 là không có sân.
+
+Inbox lưu cột `command`; migration additive chỉ trong SQLite DO, receipt cũ mặc
+định `available`, không xóa bảng/update cũ. Loại lệnh được giữ qua restart và mọi
+state transition. `/priority` dùng deadline inbox 15 giây và sendReply/UNCERTAIN
+chung, không thể làm một update đã gửi trở thành công việc gửi mới.
 
 Trước HTTP200, inbox update_id phải lưu bền vững. Sheets xử lý bất đồng bộ bằng
 DO waitUntil; alarm là fallback cho inbox PENDING sau gián đoạn, không retry send.

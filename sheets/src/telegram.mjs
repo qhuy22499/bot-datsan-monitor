@@ -106,10 +106,72 @@ export async function parseWebhook(request, env) {
     throw new WebhookError('WEBHOOK_CHAT_REJECTED', 403);
   }
   if (message.from?.is_bot === true || typeof message.text !== 'string' || message.text.length > 100) return null;
-  const command = message.text.trim().match(/^\/available(?:@([A-Za-z0-9_]{5,32}))?$/);
-  if (!command || (command[1] && command[1].toLowerCase() !== username.toLowerCase())) return null;
+  const command = message.text.trim().match(/^\/(available|priority)(?:@([A-Za-z0-9_]{5,32}))?$/);
+  if (!command || (command[2] && command[2].toLowerCase() !== username.toLowerCase())) return null;
   // Persist only the routing/dedup identifiers, never member identity or text.
-  return {updateId: update.update_id, chatId: allowedChat};
+  return {updateId: update.update_id, chatId: allowedChat, command: command[1]};
+}
+
+// Input rows have already passed the same COMPLETE snapshot validation as
+// /available. Reuse its priority labels, including unverified holiday coverage.
+export function priorityMessage(data, spreadsheetId) {
+  if (typeof spreadsheetId !== 'string' || !/^[A-Za-z0-9_-]{20,150}$/.test(spreadsheetId))
+    throw new TelegramError('TELEGRAM_SPREADSHEET_CONFIG_INVALID');
+  const title = ['⚽ SÂN TRỐNG PHÙ HỢP', '小菅西フットサル場'];
+  if (data?.status !== 'READ' || !Array.isArray(data.rows)) {
+    return {text:[...title, '', '⚠️ Không thể xác minh danh sách sân trống từ D1.',
+      'Chưa có snapshot COMPLETE hợp lệ, dữ liệu không đọc được hoặc đã hết thời gian chờ.',
+      'Không thể kết luận hiện có bao nhiêu sân phù hợp.'].join('\n'),
+    total:null, unverifiedTotal:null, shown:0, truncated:false};
+  }
+  const definitions = [
+    ['Ưu tiên 1', '⭐ ƯU TIÊN 1'], ['Ưu tiên 2', '⭐ ƯU TIÊN 2'],
+    ['Chỉ thông báo', '🔔 CHỈ THÔNG BÁO'], ['Chưa xác minh ngày lễ', '⚠️ CẦN XÁC MINH NGÀY LỄ'],
+  ];
+  const sorted = [...data.rows].sort((a,b) => a.day.localeCompare(b.day)
+    || a.start.localeCompare(b.start) || a.court.localeCompare(b.court));
+  const groups = definitions.map(([label,heading]) => ({heading,
+    rows:sorted.filter(row => row.priority === label)}));
+  const total = groups.slice(0,3).reduce((n,g) => n+g.rows.length,0);
+  const unverifiedTotal = groups[3].rows.length;
+  const line = row => `${row.weekday} ${row.date} · Sân ${row.court} · ${row.start}–${row.end}`;
+  const render = (counts,truncated) => {
+    const lines = [...title];
+    if (!total && !unverifiedTotal) lines.push('', 'Hiện chưa có sân trống phù hợp');
+    if (!total && unverifiedTotal) lines.push('', 'Cần xác minh lịch lễ trước khi kết luận khung giờ phù hợp.');
+    groups.forEach((group,i) => {
+      if (!group.rows.length) return;
+      lines.push('', `${group.heading} (${group.rows.length})`, ...group.rows.slice(0,counts[i]).map(line));
+      if (counts[i] < group.rows.length) lines.push(`… Còn ${group.rows.length-counts[i]} khung giờ trong nhóm.`);
+    });
+    lines.push('', `Tổng: ${total} khung giờ phù hợp`);
+    if (unverifiedTotal) lines.push(`Cần xác minh ngày lễ: ${unverifiedTotal} khung giờ (chưa tính vào tổng phù hợp).`);
+    lines.push(`Quan sát: ${timestamp(data.observedAt) || 'Chưa thể xác minh'}`);
+    if (data.stale) lines.push('⚠️ Dữ liệu đã cũ. Kiểm tra website trước khi đặt.');
+    if (data.sourceWarning) lines.push('⚠️ Lượt monitor gần nhất FAILED/PARTIAL hoặc phạm vi đã cũ; đang sử dụng snapshot COMPLETE đã xác minh trước đó.');
+    if (data.calendarWarning || unverifiedTotal) lines.push('⚠️ Lịch lễ Nhật chưa được xác minh đầy đủ; các khung giờ cần kiểm tra được liệt kê riêng.');
+    if (truncated) lines.push('', 'Danh sách rút gọn; xem toàn bộ và đối chiếu thời điểm cập nhật trên Google Sheets:',
+      `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#range=AVAILABLE!A1:E`);
+    return lines.join('\n');
+  };
+  let counts = groups.map(g => g.rows.length), text = render(counts,false);
+  const truncated = text.length > 4000;
+  if (truncated) {
+    counts = groups.map(() => 0);
+    // Distribute space across all groups; no group is silently lost to a long
+    // higher-priority group. Send only one bounded message, never a spam batch.
+    let added;
+    do {
+      added = false;
+      for (let i=0;i<groups.length;i++) {
+        if (counts[i] >= groups[i].rows.length) continue;
+        const candidate = [...counts];candidate[i]++;
+        if (render(candidate,true).length <= 4000) {counts=candidate;added=true;}
+      }
+    } while (added);
+    text=render(counts,true);
+  }
+  return {text,total,unverifiedTotal,shown:counts.reduce((n,v)=>n+v,0),truncated};
 }
 
 function timestamp(value) {

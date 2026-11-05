@@ -1,8 +1,8 @@
-import {readAvailability} from './read-model.mjs';
+import {readAvailability,projectAvailability} from './read-model.mjs';
 import {GoogleSheets} from './google.mjs';
 import {SyncCoordinator,SYNC_BUDGET_MS} from './coordinator.mjs';
 import {CoordinatorStore} from './store.mjs';
-import {parseWebhook,summaryReply,sendReply,WebhookError,TelegramError} from './telegram.mjs';
+import {parseWebhook,summaryReply,priorityMessage,sendReply,WebhookError,TelegramError} from './telegram.mjs';
 
 export const SHEETS_CRON='10 0-13,22-23 * * *';
 const safeJSON=(value,status=200)=>Response.json(value,{status});
@@ -87,7 +87,8 @@ export class SheetsCoordinator {
     try {
       const input=await request.json();
       // Defense in depth even though only authenticated outer handler calls us.
-      if(input.chatId!==this.env.TELEGRAM_TEST_CHAT_ID || !Number.isSafeInteger(input.updateId) || input.updateId<0)
+      if(input.chatId!==this.env.TELEGRAM_TEST_CHAT_ID || !Number.isSafeInteger(input.updateId) || input.updateId<0
+          || !['available','priority'].includes(input.command ?? 'available'))
         return safeJSON({ok:false},403);
       const now=Date.now();
       const receivedAt=input.receivedAt ?? now;
@@ -115,18 +116,45 @@ export class SheetsCoordinator {
   async processOnce(id) {
     const record=this.store.claimUpdate(id);
     if(!record)return;
-    let result;
-    try {result=await this.engine().sync({deadlineAt:record.deadlineAt});}
-    catch {result={status:'FAILED',code:'CONFIGURATION_INVALID'};}
+    let result,text;
+    if(record.command==='priority') {
+      let timer;
+      try {
+        const remaining=record.deadlineAt-Date.now();
+        if(remaining<=0)throw new Error('PRIORITY_READ_TIMEOUT');
+        const expired=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('PRIORITY_READ_TIMEOUT')),remaining);});
+        const read=await Promise.race([readAvailability(this.env.DB,Date.now()),expired]);
+        const data=read.snapshot?projectAvailability(read.snapshot,Date.now()):read;
+        const message=priorityMessage({status:'READ',...data},this.env.GOOGLE_SPREADSHEET_ID);
+        text=message.text;
+        result={status:'READ',total:message.total,unverifiedTotal:message.unverifiedTotal,
+          shown:message.shown,truncated:message.truncated,observedAt:data.observedAt,
+          stale:data.stale,sourceWarning:data.sourceWarning};
+      }catch(error){
+        const code=typeof error?.code==='string' && /^[A-Z0-9_]+$/.test(error.code)
+          ? error.code : error?.message==='PRIORITY_READ_TIMEOUT'?'PRIORITY_READ_TIMEOUT':'PRIORITY_READ_UNCONFIRMED';
+        result={status:'FAILED',code};
+        text=priorityMessage(result,this.env.GOOGLE_SPREADSHEET_ID).text;
+      }finally{clearTimeout(timer);}
+    }else{
+      try {result=await this.engine().sync({deadlineAt:record.deadlineAt});}
+      catch {result={status:'FAILED',code:'CONFIGURATION_INVALID'};}
+      text=summaryReply(result,this.env.GOOGLE_SPREADSHEET_ID);
+    }
     if(!this.store.claimReply(id))return;
     try {
-      const reply=await sendReply(this.env,record.chatId,summaryReply(result,this.env.GOOGLE_SPREADSHEET_ID),{
+      const reply=await sendReply(this.env,record.chatId,text,{
         signal:AbortSignal.timeout(10000)});
       this.store.finishUpdate(id,'SENT',{messageId:reply.messageId,result});
+      console.log(JSON.stringify({kind:'SHEETS_COMMAND_REPLY',command:record.command,status:'SENT',
+        message_id:reply.messageId,source_status:result.status,total:result.total,...safety}));
     }catch(error){
       const known=error instanceof TelegramError;
-      this.store.finishUpdate(id,known&&!error.ambiguous?'FAILED':'UNCERTAIN',{
+      const status=known&&!error.ambiguous?'FAILED':'UNCERTAIN';
+      this.store.finishUpdate(id,status,{
         code:known?error.code:'TELEGRAM_DELIVERY_UNKNOWN',result});
+      console.log(JSON.stringify({kind:'SHEETS_COMMAND_REPLY',command:record.command,status,
+        code:known?error.code:'TELEGRAM_DELIVERY_UNKNOWN',source_status:result.status,...safety}));
     }
   }
 

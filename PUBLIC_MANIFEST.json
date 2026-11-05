@@ -59,19 +59,19 @@
     "monitor/display.py": "f52824e6d1a831f817deb75dbad82b16bcee8beb79e5c90eda8c041579b6b3d5",
     "tests/test_summary_display.py": "efb0ec1149558212c0a8949d23dc3b86f2644f4e732b8a1efe18aedbf9f69e30",
     "sheets/src/coordinator.mjs": "6d1198aac9da738746040c843d739de1f327b52bb37edb959e8d3bf6ca2fe957",
-    "sheets/test/store.test.mjs": "fd45f9654aa9abc5d3b7f92de2fbcdcf736ca7d3d442bb8353dd2b22abe3484c",
-    "sheets/README.md": "d4ec91857d72c1afbe90caf3fccc8d1746ca04d376eab68c30399038131aab0a",
+    "sheets/test/store.test.mjs": "df355434d978b91d30668d6e14c70b04de5932739a77f908af24284d24e6747c",
+    "sheets/README.md": "06d77a5fc74a311df8a511efb4f58d53297d5344f597dfa71c25527b35f1a36c",
     "sheets/wrangler.jsonc": "5b56fc6c4a9fc7dcae1f74680b23066df033f4e1f551bf8d12df2794a04de9f2",
-    "sheets/src/index.mjs": "3318cf7be8da0a55cae38f66797b70818a9ed4a6c0945cb36e6b6401693fcb3f",
+    "sheets/src/index.mjs": "243661b62178d625160d14a76feea5d906797192df54da86c00f4928ed52bb99",
     "sheets/test/google.test.mjs": "4c85e4dec5ee08c3377bee161e20f75c58a169ae93333d4bc9ddb7b64c6ccdd6",
-    "sheets/test/read-model.test.mjs": "52fed502b16aaa9c344728abc707a99bc88ce35b52b6e23ec2c9451275754631",
+    "sheets/test/read-model.test.mjs": "6a2eacfb2a02880e44381f23220e5034270a8a512b38090fdea41a78721651e2",
     "sheets/package.json": "b6ccd0879e277794ec1d2d67730b78e3c087906a23806f49d14932fe9c66dfed",
     "sheets/src/google.mjs": "065d0c67391957c13f0932eaab0753e7e95c600a83aa03de0f3d03de132342bd",
-    "sheets/src/store.mjs": "a7d1d28e0c2682ff82c822b1c4c72d2a4ae5667246ff557ecb187115279617aa",
-    "sheets/src/telegram.mjs": "fe52da9a71948932bd9a8e9edeb4c88b453986c66015ef2458293910b48f1007",
+    "sheets/src/store.mjs": "2fb5dc814bc7cc7d0c6e0b8cf01409ba66e5cad52a88f97db8c83ce75030959c",
+    "sheets/src/telegram.mjs": "f38df4dedf5c350c5d98ae409c8b3d60cc2c6a2057d192f2d3ff35ad3e9c6f77",
     "sheets/src/read-model.mjs": "ef889cdc0cc7a6c909b238fed4aa568ebb165700edaccea9282a631247c836f2",
     "sheets/test/coordinator.test.mjs": "387dec3569992e7ebcbe921f9a67c9b5d403110452924d5023e5a77c7ee87418",
-    "sheets/test/telegram.test.mjs": "b7fecd49deaab42316d503e8b32329abbba51fe441aeb2bf9bf9935af00ea5f1",
-    "sheets/test/worker.test.mjs": "f6e53432c95cdc0b0f702f0a867baacda13a0d872c195aa5d5064bed9f973ee8"
+    "sheets/test/telegram.test.mjs": "cf715e2630a54b50c2d97f66a35023771e18bf02fd2c985fc15e71b7508a2c54",
+    "sheets/test/worker.test.mjs": "4a4bff650c83323afb341268b62875516124fa09a04c20f713a6b83a47369c87"
   }
 }

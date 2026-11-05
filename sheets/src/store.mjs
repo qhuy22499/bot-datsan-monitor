@@ -7,6 +7,7 @@ const messageId = value => Number.isSafeInteger(value) && value > 0;
 const decode = row => row ? {
   updateId: row.update_id,
   chatId: row.chat_id,
+  command: row.command,
   receivedAt: row.received_at,
   deadlineAt: row.deadline_at,
   state: row.state,
@@ -25,8 +26,14 @@ export class CoordinatorStore {
       received_at INTEGER NOT NULL, deadline_at INTEGER NOT NULL,
       state TEXT NOT NULL CHECK (state IN
         ('PENDING','WORKING','REPLY_SENDING','SENT','FAILED','UNCERTAIN')),
-      detail TEXT NOT NULL DEFAULT '{}'
+      detail TEXT NOT NULL DEFAULT '{}',
+      command TEXT NOT NULL DEFAULT 'available' CHECK (command IN ('available','priority'))
     )`);
+    // Additive migration in the isolated DO only. Existing inbox rows retain
+    // their receipts and are all the original /available command.
+    if (!sql.exec('PRAGMA table_info(sheets_webhook_inbox)').toArray().some(row => row.name === 'command')) {
+      sql.exec("ALTER TABLE sheets_webhook_inbox ADD COLUMN command TEXT NOT NULL DEFAULT 'available' CHECK (command IN ('available','priority'))");
+    }
   }
 
   readSync() {
@@ -48,11 +55,13 @@ export class CoordinatorStore {
     if (!update || !updateId(update.updateId)
         || typeof update.chatId !== 'string' || !/^-?\d{1,20}$/.test(update.chatId)
         || !integer(update.receivedAt) || !integer(update.deadlineAt)
-        || update.deadlineAt < update.receivedAt) throw new Error('INVALID_INBOX_UPDATE');
+        || update.deadlineAt < update.receivedAt
+        || !['available','priority'].includes(update.command ?? 'available')) throw new Error('INVALID_INBOX_UPDATE');
     // Store only fields needed to reply. Raw Telegram payload/user data are excluded.
     const rows = this.sql.exec(`INSERT OR IGNORE INTO sheets_webhook_inbox
-      (update_id, chat_id, received_at, deadline_at, state) VALUES (?, ?, ?, ?, 'PENDING')
-      RETURNING *`, update.updateId, update.chatId, update.receivedAt, update.deadlineAt).toArray();
+      (update_id, chat_id, received_at, deadline_at, state, command) VALUES (?, ?, ?, ?, 'PENDING', ?)
+      RETURNING *`, update.updateId, update.chatId, update.receivedAt, update.deadlineAt,
+    update.command ?? 'available').toArray();
     return {accepted: rows.length === 1, record: rows.length ? decode(rows[0]) : this.getUpdate(update.updateId)};
   }
 
