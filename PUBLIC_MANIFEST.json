@@ -60,8 +60,8 @@
     "tests/test_summary_display.py": "efb0ec1149558212c0a8949d23dc3b86f2644f4e732b8a1efe18aedbf9f69e30",
     "sheets/src/coordinator.mjs": "6d1198aac9da738746040c843d739de1f327b52bb37edb959e8d3bf6ca2fe957",
     "sheets/test/store.test.mjs": "fd45f9654aa9abc5d3b7f92de2fbcdcf736ca7d3d442bb8353dd2b22abe3484c",
-    "sheets/README.md": "2b5ffda7a4991c1a8b82694d03b2d1a55a1c1c9f96c216b7660d1a3bff0339d5",
-    "sheets/wrangler.jsonc": "00dcf4ea7376d22ab8e3c27b3c30ed2dcd4cd178e41e2e0e5bc1e70fe9480a70",
+    "sheets/README.md": "d4ec91857d72c1afbe90caf3fccc8d1746ca04d376eab68c30399038131aab0a",
+    "sheets/wrangler.jsonc": "5b56fc6c4a9fc7dcae1f74680b23066df033f4e1f551bf8d12df2794a04de9f2",
     "sheets/src/index.mjs": "3318cf7be8da0a55cae38f66797b70818a9ed4a6c0945cb36e6b6401693fcb3f",
     "sheets/test/google.test.mjs": "4c85e4dec5ee08c3377bee161e20f75c58a169ae93333d4bc9ddb7b64c6ccdd6",
     "sheets/test/read-model.test.mjs": "52fed502b16aaa9c344728abc707a99bc88ce35b52b6e23ec2c9451275754631",
@@ -72,6 +72,6 @@
     "sheets/src/read-model.mjs": "ef889cdc0cc7a6c909b238fed4aa568ebb165700edaccea9282a631247c836f2",
     "sheets/test/coordinator.test.mjs": "387dec3569992e7ebcbe921f9a67c9b5d403110452924d5023e5a77c7ee87418",
     "sheets/test/telegram.test.mjs": "b7fecd49deaab42316d503e8b32329abbba51fe441aeb2bf9bf9935af00ea5f1",
-    "sheets/test/worker.test.mjs": "5088de2d9f3074cffb2e02732dc2224b829d36c1223b67db98eebde63af4fbf7"
+    "sheets/test/worker.test.mjs": "f6e53432c95cdc0b0f702f0a867baacda13a0d872c195aa5d5064bed9f973ee8"
   }
 }

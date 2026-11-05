@@ -98,10 +98,11 @@ async function fixture(t) {
     }};
 }
 
-test('phase1 config matches existing binding and has no live cron/webhook; 16 UTC/JST ticks including new year',()=>{
+test('approved phase2 config matches existing binding; 16 UTC/JST ticks including new year',()=>{
   const config=JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
-  assert.equal(config.name,'bot-datsan-sheets');assert.equal(config.vars.SHEETS_SCHEDULE_ENABLED,'false');
-  assert.equal(config.vars.TELEGRAM_WEBHOOK_ENABLED,'false');assert.deepEqual(config.triggers.crons,[]);
+  assert.equal(config.name,'bot-datsan-sheets');assert.equal(config.vars.SHEETS_SCHEDULE_ENABLED,'true');
+  assert.equal(config.vars.TELEGRAM_WEBHOOK_ENABLED,'true');assert.deepEqual(config.triggers.crons,[SHEETS_CRON]);
+  assert.equal(config.vars.TELEGRAM_BOT_USERNAME,'BotDatSan_bot');
   assert.equal(config.d1_databases[0].binding,'DB');
   assert.equal(config.d1_databases[0].database_id,'b0e8dfdb-42d6-410c-b950-e3fd31710c11');
   assert.deepEqual(config.migrations,[{tag:'sheets-coordinator-v1',new_sqlite_classes:['SheetsCoordinator']}]);

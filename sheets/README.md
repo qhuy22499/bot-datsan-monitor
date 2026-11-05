@@ -1,7 +1,8 @@
-# Google Sheets Availability — Phase 1
+# Google Sheets Availability — Phase 2
 
-Worker đích **bot-datsan-sheets**. Chưa deploy/kích hoạt LIVE. Không sửa Worker
-storage, monitoring, business D1 schema hoặc Windows core.
+Worker đích **bot-datsan-sheets**. Phase 2 đã được phê duyệt; cấu hình repository
+bật webhook Group TEST và Cron Sheets 16 lần/ngày. Chỉ deploy sau kiểm chứng Google
+LIVE và webhook không xung đột. Không sửa storage, monitoring, D1 schema hay Windows.
 
 ## Luồng và dữ liệu
 
@@ -63,7 +64,7 @@ UPDATED giả. Việc gửi phản hồi Telegram có timeout mạng riêng tố
 Crash/hết quota nền tảng không thể bảo đảm thời gian giao tin tuyệt đối; inbox
 bền vững vẫn cho phép phục hồi an toàn. Scheduled Sync không gửi Telegram.
 
-## Cấu hình đã chuẩn bị, chưa kích hoạt
+## Cấu hình triển khai đã được phê duyệt
 
 `wrangler.jsonc` dùng đúng DB hiện có và Spreadsheet ID, không placeholder.
 Giữ Google secret hiện có, không đọc/ghi giá trị trong repository:
@@ -71,13 +72,13 @@ Giữ Google secret hiện có, không đọc/ghi giá trị trong repository:
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: secret có sẵn; RS256 OAuth, scope spreadsheets.
 - `GOOGLE_SPREADSHEET_ID`: var có sẵn.
 - DB: `bot-datsan-monitor-db`, binding `DB`, ID đã đối chiếu.
-- Bổ sung ở Phase2: DO binding `SHEETS_COORDINATOR`, SQLite class migration
+- DO binding `SHEETS_COORDINATOR`, SQLite class migration
   `sheets-coordinator-v1` (**không phải D1 migration**).
 - Phase2 cần secrets `TG_WEBHOOK_SECRET`, `TELEGRAM_BOT_TOKEN`,
   `TELEGRAM_TEST_CHAT_ID`; var `TELEGRAM_BOT_USERNAME` lấy từ getMe.
 
-Phase1: `triggers.crons=[]`, `SHEETS_SCHEDULE_ENABLED=false`,
-`TELEGRAM_WEBHOOK_ENABLED=false`. Namespace chưa được tạo.
+Phase1 từng giữ flags OFF và không có Cron. Phase2 dùng flags ON, bot username
+đã xác minh bằng getMe; chat ID luôn là Secret, không đưa vào cấu hình Git.
 
 Sau phê duyệt Phase2: kiểm secrets/bindings; deploy đúng Worker với flags OFF;
 sync TEST có kiểm soát và kiểm tab; xác minh không có getUpdates consumer rồi
@@ -98,8 +99,8 @@ cd sheets
 node ../worker/node_modules/wrangler/bin/wrangler.js deploy --dry-run --outdir artifacts/build
 ```
 
-Không chạy `deploy` thật, setWebhook, Cron LIVE hoặc gửi Telegram ở Phase1.
-Tests dùng RSA key sinh trong RAM và mock Google/Telegram, không credential thật.
+Tests offline dùng RSA key sinh trong RAM và mock Google/Telegram, không credential
+thật. Quy trình triển khai LIVE chỉ áp dụng trong phạm vi Phase2 đã được admin duyệt.
 
 ## Quota và giới hạn còn lại
 

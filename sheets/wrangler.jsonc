@@ -7,8 +7,9 @@
   "observability": {"enabled": false},
   "vars": {
     "GOOGLE_SPREADSHEET_ID": "1Qj5UBVpXQ6M_FfsYvCYbj_nnKlRRya7cWrcMR7Ifeqc",
-    "SHEETS_SCHEDULE_ENABLED": "false",
-    "TELEGRAM_WEBHOOK_ENABLED": "false"
+    "SHEETS_SCHEDULE_ENABLED": "true",
+    "TELEGRAM_WEBHOOK_ENABLED": "true",
+    "TELEGRAM_BOT_USERNAME": "BotDatSan_bot"
   },
   "d1_databases": [{
     "binding": "DB",
@@ -19,5 +20,5 @@
     "bindings": [{"name": "SHEETS_COORDINATOR", "class_name": "SheetsCoordinator"}]
   },
   "migrations": [{"tag": "sheets-coordinator-v1", "new_sqlite_classes": ["SheetsCoordinator"]}],
-  "triggers": {"crons": []}
+  "triggers": {"crons": ["10 0-13,22-23 * * *"]}
 }
