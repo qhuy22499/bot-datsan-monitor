@@ -274,3 +274,18 @@ test('unexpected successful HTTP status on a write is UNCERTAIN, never retried',
     assert.equal(calls,1);
   }
 });
+
+test('Workers native-style fetch is invoked without the adapter as receiver', async () => {
+  const calls=[];
+  const fetcher=async function(url,init){
+    assert.equal(this,undefined,'native Workers fetch rejects a foreign receiver');
+    calls.push(String(url));
+    if(String(url)===account.token_uri)return json({access_token:access,token_type:'Bearer',expires_in:3600});
+    if(init.method==='GET')return json(document());
+    return json({spreadsheetId,replies:JSON.parse(init.body).requests.map(()=>({}))});
+  };
+  const {adapter}=fixture(null,{fetcher});
+  await adapter.readTab();
+  assert.equal((await adapter.replaceTab(replaceArgs())).status,'UPDATED');
+  assert.equal(calls.length,3);
+});

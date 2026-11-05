@@ -108,7 +108,9 @@ export class GoogleSheets {
           || typeof fetcher !== 'function' || typeof clock !== 'function') throw 0;
       this.#account = account;
       this.#spreadsheetId = spreadsheetId;
-      this.#fetcher = fetcher;
+      // Workers' native fetch rejects a GoogleSheets instance as its receiver.
+      // Invoke the injected function as a standalone function, as on the web.
+      this.#fetcher = (...args) => fetcher(...args);
       this.#clock = clock;
     } catch {
       throw fail('GOOGLE_CONFIG_INVALID');
