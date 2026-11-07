@@ -10,6 +10,7 @@ export async function startD1(persistPath) {
  // byte from the reviewed Worker; its SQL, auth, validation, and fencing run
  // inside workerd against the actual local D1 binding.
  writeFileSync(join(directory,'index.mjs'),readFileSync(new URL('../src/index.mjs',import.meta.url)));
+ writeFileSync(join(directory,'bookings.mjs'),readFileSync(new URL('../src/bookings.mjs',import.meta.url)));
  writeFileSync(join(directory,'entry.mjs'),`import {createHandler} from './index.mjs';
  export default {fetch(request,env){
  const clock=Number(request.headers.get('X-Fixture-Clock'));
@@ -19,7 +20,7 @@ export async function startD1(persistPath) {
  // The pinned v5 compatibility converter does not discover imported modules,
  // and strips the legacy d1Persist option. Declare both modules and the v5
  // resource root explicitly so actual D1 survives a child-process restart.
- const options={modules:[{type:'ESModule',path:join(directory,'entry.mjs')},{type:'ESModule',path:join(directory,'index.mjs')}],
+ const options={modules:[{type:'ESModule',path:join(directory,'entry.mjs')},{type:'ESModule',path:join(directory,'index.mjs')},{type:'ESModule',path:join(directory,'bookings.mjs')}],
    modulesRoot:directory,compatibilityDate:'2025-10-01',
    d1Databases:{DB:'00000000-0000-0000-0000-000000000001'},bindings:{API_SECRET:SECRET},
    ...(persistPath ? (miniflare.convertV4MiniflareOptions ? {resourcePersistencePath:persistPath} : {d1Persist:persistPath}) : {})};
@@ -34,6 +35,10 @@ export async function startD1(persistPath) {
     const additive=readFileSync(new URL('../migrations/0002_notification_v2.sql',import.meta.url),'utf8')
       .replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
     await db.batch(additive.map(s=>db.prepare(s)));
+  }
+  if(!(await db.prepare("SELECT name FROM sqlite_master WHERE name='booking_groups'").first())){
+    const booking=readFileSync(new URL('../migrations/0003_bookings.sql',import.meta.url),'utf8').replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
+    await db.batch(booking.map(s=>db.prepare(s)));
   }
   return {db,async fetch(path,{body,headers={},now}) {
     return mf.dispatchFetch('https://storage.test'+path,{method:'POST',headers:{...headers,'X-Fixture-Clock':String(now)},body});

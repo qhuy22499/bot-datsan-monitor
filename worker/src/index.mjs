@@ -1,4 +1,5 @@
 // Fixed command API only. No SQL/URLs from clients; no logging of requests.
+import {bookingCommand} from './bookings.mjs';
 const MAX_BODY = 800000;
 const ID = /^[a-f0-9]{32}$/;
 const OWNER = /^[a-f0-9-]{36}$/;
@@ -229,7 +230,7 @@ export function createHandler(clock=()=>Date.now()) { return {
       const [given,wanted]=await Promise.all([digest(request.headers.get('Authorization')||''),digest('Bearer '+env.API_SECRET)]);
       let delta=0;for(let i=0;i<given.length;i++) delta|=given[i]^wanted[i];need(delta===0,'UNAUTHORIZED',401);
       need(request.method==='POST','METHOD_NOT_ALLOWED',405);
-      const allowed=new Set(['acquire','snapshot','commit','failure','claim','receipt','release']);
+      const allowed=new Set(['acquire','snapshot','commit','failure','claim','receipt','release','booking_acquire','booking_begin','booking_result','booking_snapshot','booking_release']);
       const name=url.pathname.replace(/^\/v1\//,'');need(allowed.has(name) && url.pathname==='/v1/'+name && !url.search,'UNSUPPORTED_ENDPOINT',404);
       need((request.headers.get('Content-Type')||'').split(';')[0]==='application/json');
       const declared=Number(request.headers.get('Content-Length')||0);need(declared<=MAX_BODY,'BODY_TOO_LARGE',413);
@@ -241,11 +242,12 @@ export function createHandler(clock=()=>Date.now()) { return {
       const db=env.DB.withSession('first-primary');
       const version=await db.prepare('SELECT version FROM schema_meta ORDER BY version DESC LIMIT 1').first();
       need(version?.version===1,'UNSUPPORTED_SCHEMA',409);
-      const result=await command(name,payload,db,clock());
+      const result=await (name.startsWith('booking_')?bookingCommand:command)(name,payload,db,clock());
       return response({ok:true,...result});
     } catch(error) {
-      return response({ok:false,error:error instanceof Fault ? error.code : 'STORAGE_UNAVAILABLE'},error instanceof Fault ? error.status : 503);
+      return response({ok:false,error:error instanceof Fault || nameOfBookingFault(error) ? error.code : 'STORAGE_UNAVAILABLE'},error instanceof Fault || nameOfBookingFault(error) ? error.status : 503);
     }
   }
 }; }
+function nameOfBookingFault(e){return e?.constructor?.name==='BookingFault';}
 export default createHandler();

@@ -1,3 +1,4 @@
+import {readBooked,projectBooked,bookedValues} from './booked.mjs';
 import {readAvailability,projectAvailability} from './read-model.mjs';
 import {GoogleSheets} from './google.mjs';
 import {SyncCoordinator,SYNC_BUDGET_MS} from './coordinator.mjs';
@@ -26,6 +27,16 @@ export function validScheduledEvent(controller,nowMs) {
 export default {
   async fetch(request,env) {
     const receivedAt=Date.now();
+    if(new URL(request.url).pathname==='/booked/sync') {
+      if(request.method!=='POST'||new URL(request.url).search)return safeJSON({status:'FAILED',code:'METHOD_NOT_ALLOWED'},405);
+      if(typeof env.BOOKED_SYNC_SECRET!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(env.BOOKED_SYNC_SECRET))return safeJSON({status:'FAILED',code:'NOT_CONFIGURED'},503);
+      const digest=async s=>new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));
+      const [given,wanted]=await Promise.all([digest(request.headers.get('Authorization')||''),digest('Bearer '+env.BOOKED_SYNC_SECRET)]);
+      let diff=0;for(let i=0;i<given.length;i++)diff|=given[i]^wanted[i];
+      if(diff)return safeJSON({status:'FAILED',code:'UNAUTHORIZED'},401);
+      const target=env.SHEETS_COORDINATOR.get(env.SHEETS_COORDINATOR.idFromName('BOOKED-v1'));
+      return target.fetch(new Request('https://coordinator.internal/booked/sync',{method:'POST'}));
+    }
     if (env.TELEGRAM_WEBHOOK_ENABLED!=='true'
         || new URL(request.url).pathname!=='/telegram/webhook' || request.method!=='POST')
       return new Response('Not Found',{status:404});
@@ -79,6 +90,16 @@ export class SheetsCoordinator {
     await this.ready;
     const path=new URL(request.url).pathname;
     if(request.method!=='POST')return new Response('Not Found',{status:404});
+    if(path==='/booked/sync') {
+      try{
+        if(!this.bookedCoordinator)this.bookedCoordinator=new SyncCoordinator({store:this.store,
+          readSource:()=>readBooked(this.env.DB,Date.now()),render:bookedValues,project:projectBooked,
+          google:new GoogleSheets({serviceAccountJson:this.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+            spreadsheetId:this.env.GOOGLE_SPREADSHEET_ID,tabTitle:'BOOKED',headerRowIndex:11,
+            creationStore:{read:()=>this.ctx.storage.get('booked-create'),write:v=>this.ctx.storage.put('booked-create',v)}})});
+        return safeJSON(await this.bookedCoordinator.sync());
+      }catch{return safeJSON({status:'FAILED',code:'BOOKED_CONFIGURATION_INVALID'});}
+    }
     if(path==='/sync') {
       try{return safeJSON(await this.engine().sync());}
       catch{return safeJSON({status:'FAILED',code:'CONFIGURATION_INVALID'});}

@@ -1,0 +1,45 @@
+name: Group bookings READ_ONLY sync
+run-name: Booking sync · ${{ inputs.trigger_id || github.run_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      trigger_id:
+        description: Non-secret once-only run identity from Cloudflare
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: katsushika-booking-readonly
+  cancel-in-progress: false
+jobs:
+  bookings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - run: |
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
+      - run: python -m playwright install --with-deps chromium
+      - name: Three isolated group sessions then BOOKED replacement
+        env:
+          BOOKING_TRIGGER_ID: ${{ inputs.trigger_id }}
+          BOOKING_GROUP_A_LOGIN_ID: ${{ secrets.BOOKING_GROUP_A_LOGIN_ID }}
+          BOOKING_GROUP_A_PASSWORD: ${{ secrets.BOOKING_GROUP_A_PASSWORD }}
+          BOOKING_GROUP_B_LOGIN_ID: ${{ secrets.BOOKING_GROUP_B_LOGIN_ID }}
+          BOOKING_GROUP_B_PASSWORD: ${{ secrets.BOOKING_GROUP_B_PASSWORD }}
+          BOOKING_GROUP_C_LOGIN_ID: ${{ secrets.BOOKING_GROUP_C_LOGIN_ID }}
+          BOOKING_GROUP_C_PASSWORD: ${{ secrets.BOOKING_GROUP_C_PASSWORD }}
+          MONITOR_API_URL: ${{ secrets.MONITOR_API_URL }}
+          MONITOR_API_SECRET: ${{ secrets.MONITOR_API_SECRET }}
+          BOOKED_SYNC_URL: ${{ secrets.BOOKED_SYNC_URL }}
+          BOOKED_SYNC_SECRET: ${{ secrets.BOOKED_SYNC_SECRET }}
+          DEBUG: ''
+          PWDEBUG: ''
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m booking.runtime

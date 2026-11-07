@@ -62,9 +62,9 @@ function bounded(promise, deadlineAt, clock) {
 // coalesces callers within that globally unique object; durable WRITING state
 // protects against restart/eviction. It is not a stand-alone memory lock.
 export class SyncCoordinator {
-  constructor({store, readSource, google, clock=Date.now}) {
+  constructor({store, readSource, google, clock=Date.now, render=sheetValues, project=projectAvailability}) {
     this.store=store;this.readSource=readSource;this.google=google;this.clock=clock;
-    this.inFlight=null;
+    this.inFlight=null;this.render=render;this.project=project;
   }
 
   sync({deadlineAt=this.clock()+SYNC_BUDGET_MS}={}) {
@@ -72,7 +72,7 @@ export class SyncCoordinator {
     if (!this.inFlight) {
       const operation=this.perform(deadlineAt);
       this.inFlight=operation;
-      operation.finally(()=>{if(this.inFlight===operation)this.inFlight=null;}).catch(()=>{});
+      operation.finally(()=>{if(this.inFlight===operation)this.inFlight=null;this.render=render;this.project=project;}).catch(()=>{});
     }
     return bounded(this.inFlight,deadlineAt,this.clock);
   }
@@ -90,7 +90,7 @@ export class SyncCoordinator {
       const tab=await stage(this.google.readTab({signal:controller.signal}),controller.signal);check();
       // Time can advance while Google is read: re-filter begun slots/staleness
       // even when scan_id did not change. This never rereads the website.
-      if(data.snapshot)data=projectAvailability(data.snapshot,this.clock());
+      if(data.snapshot)data=this.project(data.snapshot,this.clock());
       const view=metadata(data);
       const previous=this.store.readSync();
       if (['WRITING','UNCERTAIN'].includes(previous.phase)) {
@@ -103,7 +103,7 @@ export class SyncCoordinator {
           lastContentKey:semantic(tab.values),reconciled:true});
       }
       const updatedAt=jstStamp(this.clock());
-      const values=sheetValues(data,updatedAt);
+      const values=this.render(data,updatedAt);
       if (semantic(tab.values)===semantic(values)) {
         const confirmedAt=tab.values[3]?.[1] || null;
         this.store.writeSync({phase:'IDLE',lastSuccessAt:confirmedAt,lastContentKey:semantic(values)});
@@ -130,7 +130,7 @@ export class SyncCoordinator {
         this.store.writeSync({...previous,phase:uncertain?'UNCERTAIN':'FAILED',code});
         return failure(code,uncertain?'UNCERTAIN':'FAILED',data?metadata(data):{});
       }
-      return failure(code,code==='GOOGLE_TIMEOUT'?'TIMEOUT':'FAILED',data?metadata(data):{});
+      return failure(code,isGoogle&&error.ambiguous?'UNCERTAIN':code==='GOOGLE_TIMEOUT'?'TIMEOUT':'FAILED',data?metadata(data):{});
     } finally {clearTimeout(timer);}
   }
 }

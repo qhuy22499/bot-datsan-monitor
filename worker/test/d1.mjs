@@ -9,6 +9,7 @@ export class LocalD1 {
     this.sql.exec(this.migration);
     if(!this.sql.prepare('PRAGMA table_info(source)').all().some(r=>r.name==='notification_version'))
       this.sql.exec(readFileSync(new URL('../migrations/0002_notification_v2.sql',import.meta.url),'utf8'));
+    if(!this.sql.prepare("SELECT 1 FROM sqlite_master WHERE name='booking_groups'").get())this.sql.exec(readFileSync(new URL('../migrations/0003_bookings.sql',import.meta.url),'utf8'));
   }
   withSession(mode) {if(mode!=='first-primary')throw Error('SESSION');return this;}
   prepare(sql) {

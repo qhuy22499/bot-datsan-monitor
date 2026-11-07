@@ -90,8 +90,11 @@ export class GoogleSheets {
   #clock;
   #key;
   #token;
+  #title;
+  #header;
+  #creation;
 
-  constructor({serviceAccountJson, spreadsheetId, fetcher = globalThis.fetch, clock = Date.now}) {
+  constructor({serviceAccountJson, spreadsheetId, fetcher = globalThis.fetch, clock = Date.now, tabTitle="AVAILABLE", headerRowIndex=8, creationStore=null}) {
     try {
       if (typeof serviceAccountJson !== 'string' || serviceAccountJson.length > 20000) throw 0;
       const account = JSON.parse(serviceAccountJson);
@@ -106,6 +109,9 @@ export class GoogleSheets {
           || (account.private_key_id && !/^[A-Za-z0-9_-]{1,100}$/.test(account.private_key_id))
           || typeof spreadsheetId !== 'string' || !/^[A-Za-z0-9_-]{20,150}$/.test(spreadsheetId)
           || typeof fetcher !== 'function' || typeof clock !== 'function') throw 0;
+      if(!['AVAILABLE','BOOKED'].includes(tabTitle) || headerRowIndex!==(tabTitle==='BOOKED'?11:8)
+          || (tabTitle==='BOOKED' && !creationStore))throw 0;
+      this.#title=tabTitle;this.#header=headerRowIndex;this.#creation=creationStore;
       this.#account = account;
       this.#spreadsheetId = spreadsheetId;
       // Workers' native fetch rejects a GoogleSheets instance as its receiver.
@@ -190,11 +196,40 @@ export class GoogleSheets {
     }
   }
 
+  async #ensureBooked(guard) {
+    const url=new URL(SHEETS_ROOT+this.#spreadsheetId);
+    url.searchParams.set('fields','spreadsheetId,sheets(properties(sheetId,title))');
+    const data=await this.#request(url.toString(),{guard});
+    if(data.spreadsheetId!==this.#spreadsheetId||!Array.isArray(data.sheets))throw fail('GOOGLE_TAB_INVALID');
+    const tabs=data.sheets.filter(s=>s.properties?.title==='BOOKED');
+    const intent=await this.#creation.read();
+    if(tabs.length===1){
+      if(intent&&tabs[0].properties.sheetId!==intent.sheetId)throw fail('GOOGLE_TAB_CREATE_UNRESOLVED',{ambiguous:true});
+      await this.#creation.write(null);return;
+    }
+    if(tabs.length||intent)throw fail('GOOGLE_TAB_CREATE_UNRESOLVED',{ambiguous:true});
+    let sheetId;
+    do {sheetId=crypto.getRandomValues(new Uint32Array(1))[0]%2000000000;}
+    while(data.sheets.some(s=>s.properties?.sheetId===sheetId));
+    await this.#creation.write({sheetId}); // Durable before Google: no blind addSheet retry.
+    try{
+      const created=await this.#request(SHEETS_ROOT+this.#spreadsheetId+':batchUpdate',{
+        guard,write:true,body:{requests:[{addSheet:{properties:{sheetId,title:'BOOKED',gridProperties:{rowCount:1000,columnCount:5}}}}]}});
+      if(created.spreadsheetId!==this.#spreadsheetId||created.replies?.[0]?.addSheet?.properties?.sheetId!==sheetId)
+        throw fail('GOOGLE_TAB_CREATE_UNRESOLVED',{ambiguous:true});
+      await this.#creation.write(null);
+    }catch(error){
+      if(error instanceof GoogleError&&!error.ambiguous)await this.#creation.write(null);
+      throw error;
+    }
+  }
+
   async readTab({signal} = {}) {
     const guard = deadline(signal);
     try {
       const url = new URL(SHEETS_ROOT + this.#spreadsheetId);
-      url.searchParams.set('ranges', "'AVAILABLE'!A:E");
+      if(this.#title==='BOOKED')await this.#ensureBooked(guard);
+      url.searchParams.set('ranges', "'"+this.#title+"'!A:E");
       url.searchParams.set('fields', 'spreadsheetId,sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),data(startRow,startColumn,rowData(values(userEnteredValue))))');
       const data = await this.#request(url.toString(), {guard});
       if (data.spreadsheetId !== this.#spreadsheetId || !Array.isArray(data.sheets) || data.sheets.length !== 1) {
@@ -203,8 +238,8 @@ export class GoogleSheets {
       const sheet = data.sheets[0];
       const properties = sheet?.properties;
       const dimensions = properties?.gridProperties;
-      if (properties?.title !== 'AVAILABLE' || !integer(properties.sheetId)
-          || !integer(dimensions?.rowCount) || dimensions.rowCount < HEADER_ROW_INDEX + 1 || dimensions.rowCount > MAX_ROWS
+      if (properties?.title !== this.#title || !integer(properties.sheetId)
+          || !integer(dimensions?.rowCount) || dimensions.rowCount < this.#header + 1 || dimensions.rowCount > MAX_ROWS
           || !integer(dimensions?.columnCount) || dimensions.columnCount < 5) throw fail('GOOGLE_TAB_INVALID');
       const blocks = sheet.data || [];
       if (!Array.isArray(blocks) || blocks.length > 1) throw fail('GOOGLE_TAB_INVALID');
@@ -225,16 +260,16 @@ export class GoogleSheets {
       });
       while (values.length && values.at(-1).every(value => !value)) values.pop();
       return {sheetId: properties.sheetId, rowCount: dimensions.rowCount,
-        columnCount: dimensions.columnCount, title: 'AVAILABLE', values};
+        columnCount: dimensions.columnCount, title: this.#title, values};
     } finally { guard.close(); }
   }
 
   async replaceTab({sheetId, rowCount, columnCount, values, signal}) {
     // All five columns belong to Bot DatSan. Values beyond the new list are
     // cleared with a userEnteredValue-only field mask, preserving cell styles.
-    if (!integer(sheetId) || !integer(rowCount) || rowCount < HEADER_ROW_INDEX + 1 || rowCount > MAX_ROWS
+    if (!integer(sheetId) || !integer(rowCount) || rowCount < this.#header + 1 || rowCount > MAX_ROWS
         || !integer(columnCount) || columnCount < 5 || !Array.isArray(values)
-        || values.length < HEADER_ROW_INDEX + 1 || values.length > MAX_ROWS
+        || values.length < this.#header + 1 || values.length > MAX_ROWS
         || !values.every(row => Array.isArray(row) && row.length <= 5
           && row.every(value => typeof value === 'string' && value.length <= 10000))) {
       throw fail('GOOGLE_VALUES_INVALID');
@@ -242,7 +277,7 @@ export class GoogleSheets {
     const guard = deadline(signal);
     try {
       const endRowIndex = Math.max(rowCount, values.length);
-      const dataEnd = Math.max(HEADER_ROW_INDEX + 1, values.length);
+      const dataEnd = Math.max(this.#header + 1, values.length);
       const requests = [];
       if (values.length > rowCount) requests.push({updateSheetProperties: {
         properties: {sheetId, gridProperties: {rowCount: values.length}}, fields: 'gridProperties.rowCount',
@@ -254,7 +289,7 @@ export class GoogleSheets {
         }))})), fields: 'userEnteredValue',
       }});
       requests.push({updateSheetProperties: {
-        properties: {sheetId, gridProperties: {frozenRowCount: HEADER_ROW_INDEX + 1}},
+        properties: {sheetId, gridProperties: {frozenRowCount: this.#header + 1}},
         fields: 'gridProperties.frozenRowCount',
       }});
       requests.push({repeatCell: {
@@ -264,14 +299,14 @@ export class GoogleSheets {
         fields: 'userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontSize,userEnteredFormat.backgroundColor',
       }});
       requests.push({repeatCell: {
-        range: {sheetId, startRowIndex: HEADER_ROW_INDEX, endRowIndex: HEADER_ROW_INDEX + 1,
+        range: {sheetId, startRowIndex: this.#header, endRowIndex: this.#header + 1,
           startColumnIndex: 0, endColumnIndex: 5},
         cell: {userEnteredFormat: {textFormat: {bold: true},
           backgroundColor: {red: 0.85, green: 0.92, blue: 0.97}}},
         fields: 'userEnteredFormat.textFormat.bold,userEnteredFormat.backgroundColor',
       }});
       requests.push({setBasicFilter: {filter: {range: {
-        sheetId, startRowIndex: HEADER_ROW_INDEX, endRowIndex: dataEnd, startColumnIndex: 0, endColumnIndex: 5,
+        sheetId, startRowIndex: this.#header, endRowIndex: dataEnd, startColumnIndex: 0, endColumnIndex: 5,
       }}}});
       // Set readable mobile widths, without affecting column F onward or any
       // other formatting (number formats, borders, custom views, tab identity).

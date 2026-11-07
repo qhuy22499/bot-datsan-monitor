@@ -1,4 +1,6 @@
 // Trigger only. No Playwright, Telegram, storage mutation, or public dispatch API.
+export const BOOKING_CRON = '30 23 * * *';
+export const BOOKING_DISPATCH_URL = 'https://api.github.com/repos/qhuy22499/bot-datsan-monitor/actions/workflows/booking-sync.yml/dispatches';
 export const CRON = '7,22,37,52 0-14,22-23 * * *';
 export const DISPATCH_URL = 'https://api.github.com/repos/qhuy22499/bot-datsan-monitor/actions/workflows/monitor.yml/dispatches';
 
@@ -11,28 +13,29 @@ export async function dispatchScheduled(controller, env, {
   // A failed/ambiguous GitHub POST must not be retried blindly by the platform.
   controller.noRetry?.();
   const now = clock(), at = controller.scheduledTime;
-  if (!validTime(now) || !validTime(at) || at > now || controller.cron !== CRON)
+  const booking=controller.cron===BOOKING_CRON;
+  if (!validTime(now) || !validTime(at) || at > now || (!booking && controller.cron !== CRON))
     return {status: 'FAILED', reason: 'INVALID_SCHEDULE_EVENT'};
   if (jstHour(now) < 7 || jstHour(at) < 7)
     return {status: 'SKIPPED', reason: 'OUTSIDE_VERIFIED_OPERATING_HOURS'};
   const minute = new Date(at).getUTCMinutes();
-  if (![7, 22, 37, 52].includes(minute))
+  if (booking ? (minute!==30 || new Date(at).getUTCHours()!==23) : ![7, 22, 37, 52].includes(minute))
     return {status: 'FAILED', reason: 'INVALID_SCHEDULE_MINUTE'};
   if (typeof env.GITHUB_DISPATCH_TOKEN !== 'string' || !/^github_pat_[A-Za-z0-9_]{40,250}$/.test(env.GITHUB_DISPATCH_TOKEN))
     return {status: 'FAILED', reason: 'GITHUB_CREDENTIAL_MISSING'};
-  const triggerId = correlationId ?? `cfcron-${at}`;
-  if (!/^cfcron-\d{13}(?:-[a-f0-9]{8})?$/.test(triggerId))
+  const triggerId = correlationId ?? `${booking?'cfbooking':'cfcron'}-${at}`;
+  if (!(booking?/^cfbooking-\d{13}(?:-[a-f0-9]{8})?$/:/^cfcron-\d{13}(?:-[a-f0-9]{8})?$/).test(triggerId))
     return {status: 'FAILED', reason: 'INVALID_CORRELATION_ID'};
   const started = performance.now();
   try {
-    const response = await fetcher(DISPATCH_URL, {
+    const response = await fetcher(booking?BOOKING_DISPATCH_URL:DISPATCH_URL, {
       // Workers supports follow/manual, not redirect:error. Never follow a
       // redirect carrying Authorization; reject 3xx below instead.
       method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(20000),
       headers: {'Authorization': `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
         'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
         'User-Agent': 'BotDatSan-Cloudflare-Cron/1.0', 'X-GitHub-Api-Version': '2026-03-10'},
-      body: JSON.stringify({ref: 'main', inputs: {
+      body: JSON.stringify({ref: 'main', inputs: booking?{trigger_id:triggerId}: {
         confirm_test_delivery: true, telegram_transport_test: false,
         dispatch_source: 'cloudflare_cron', trigger_id: triggerId,
       }}),
