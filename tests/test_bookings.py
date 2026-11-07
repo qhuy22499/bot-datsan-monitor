@@ -124,4 +124,25 @@ class BookingIntegration(unittest.TestCase):
         self.apply('A',[row()]);s=self.w.call('snapshot',{'owner':self.owner,'fence':monitor['fence']})
         self.assertEqual(s['source']['revision'],0);self.assertEqual(s['slots'],[])
 
+class SheetsPort(unittest.TestCase):
+    def test_sync_uses_application_user_agent_and_fixed_authenticated_endpoint(self):
+        import io,json,os
+        from unittest.mock import patch
+        from booking.runtime import sync_booked
+        class Opener:
+            def open(self,req,timeout):
+                self.req=req
+                return io.BytesIO(json.dumps({'status':'SKIPPED','total':11,'updatedAt':'confirmed'}).encode())
+        port=Opener()
+        with patch.dict(os.environ,{'BOOKED_SYNC_URL':'https://bot-datsan-sheets.phanquanghuy484.workers.dev/booked/sync','BOOKED_SYNC_SECRET':'offline_test_only_booked_sync'}):
+            self.assertEqual(sync_booked(opener=port)['status'],'SKIPPED')
+        self.assertEqual(port.req.get_header('User-agent'),'BotDatSan-Monitor/1.0')
+        self.assertEqual(port.req.method,'POST');self.assertEqual(port.req.data,b'{}')
+    def test_sheets_only_recovery_does_not_construct_storage_or_browser(self):
+        import os
+        from unittest.mock import patch
+        from booking.runtime import main
+        with patch.dict(os.environ,{'BOOKING_SHEETS_ONLY':'true'}),patch('booking.runtime.BookingStorage',side_effect=AssertionError('NO_D1_MUTATION')),patch('booking.runtime.sync_booked',return_value={'status':'SKIPPED'}),patch('builtins.print'):
+            self.assertEqual(main(),0)
+
 if __name__=='__main__':unittest.main()

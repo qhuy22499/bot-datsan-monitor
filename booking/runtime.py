@@ -4,14 +4,32 @@ import os
 import sys
 import uuid
 from urllib.request import Request, build_opener
+from urllib.error import HTTPError
 from monitor.storage import D1Storage, NoRedirect
 from .collector import collect, credentials_from_env, stamp, result
 
 class BookingStorage(D1Storage):
     COMMANDS=frozenset({'booking_acquire','booking_begin','booking_result','booking_snapshot','booking_release'})
 
+def sync_booked(*,opener=None):
+    try:
+        url=os.environ['BOOKED_SYNC_URL'];secret=os.environ['BOOKED_SYNC_SECRET']
+        if url!='https://bot-datsan-sheets.phanquanghuy484.workers.dev/booked/sync' or not secret:raise ValueError()
+        req=Request(url,data=b'{}',method='POST',headers={'Authorization':'Bearer '+secret,
+            'Content-Type':'application/json','User-Agent':'BotDatSan-Monitor/1.0'})
+        with (opener or build_opener(NoRedirect())).open(req,timeout=25) as response:
+            sync=json.loads(response.read(10000))
+        return {k:sync.get(k) for k in ['status','code','total','updatedAt']}
+    except HTTPError as error:
+        return {'status':'UNCONFIRMED' if error.code>=500 else 'FAILED','code':'BOOKED_SYNC_HTTP_'+str(error.code)}
+    except Exception:return {'status':'UNCONFIRMED','code':'BOOKED_SYNC_NOT_CONFIRMED'}
+
 def main():
     report={'kind':'BOOKING_SYNC','execution_allowed':False,'auto_booking_allowed':False,'groups':{}}
+    if os.environ.get('BOOKING_SHEETS_ONLY')=='true':
+        report.update(sheets=sync_booked(),source='PERSISTED_D1_NO_LOGIN')
+        print(json.dumps(report),flush=True)
+        return 0 if report['sheets']['status'] in ['UPDATED','SKIPPED'] else 2
     storage=BookingStorage(os.environ.get('MONITOR_API_URL',''),os.environ.get('MONITOR_API_SECRET',''))
     owner=str(uuid.uuid4());lease=storage.call('booking_acquire',{'owner':owner})
     fence={'owner':owner,'fence':lease['fence']}
@@ -41,14 +59,7 @@ def main():
             finally:browser.close()
     finally:storage.call('booking_release',fence)
     # D1 results are already durable. Failure below NEVER causes relogin/replay.
-    try:
-        url=os.environ['BOOKED_SYNC_URL'];secret=os.environ['BOOKED_SYNC_SECRET']
-        if url!='https://bot-datsan-sheets.phanquanghuy484.workers.dev/booked/sync':raise ValueError()
-        req=Request(url,data=b'{}',method='POST',headers={'Authorization':'Bearer '+secret,'Content-Type':'application/json'})
-        with build_opener(NoRedirect()).open(req,timeout=25) as response:
-            sync=json.loads(response.read(10000))
-        report['sheets']={k:sync.get(k) for k in ['status','code','total','updatedAt']}
-    except Exception:report['sheets']={'status':'UNCONFIRMED','code':'BOOKED_SYNC_NOT_CONFIRMED'}
+    report['sheets']=sync_booked()
     print(json.dumps(report,ensure_ascii=True),flush=True)
     return 0 if all(g.get('status')=='COMPLETE' for g in report['groups'].values()) and report['sheets']['status'] in ['UPDATED','SKIPPED'] else 2
 
