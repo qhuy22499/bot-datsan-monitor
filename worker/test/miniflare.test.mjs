@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import * as miniflare from 'miniflare';
 import {startD1} from './engine.mjs';
 const SECRET='offline_test_only_01234567890123456789';
@@ -30,7 +31,10 @@ test('actual D1 harness resolves wrapper imports and persists across restart',as
  } finally {if(engine)await engine.close();rmSync(directory,{recursive:true,force:true});}
 });
 test('workerd/D1 local: migration, commit, concurrency, receipt, rollback, lease fencing',async t=>{
- const options={modules:true,scriptPath:new URL('../src/index.mjs',import.meta.url).pathname.replace(/^\/(.:)/,'$1'),compatibilityDate:'2025-10-01',d1Databases:['DB'],bindings:{API_SECRET:SECRET}};
+ const options={modulesRoot:fileURLToPath(new URL('../src/',import.meta.url)),modules:[
+   {type:'ESModule',path:fileURLToPath(new URL('../src/index.mjs',import.meta.url))},
+   {type:'ESModule',path:fileURLToPath(new URL('../src/bookings.mjs',import.meta.url))}],
+   compatibilityDate:'2025-10-01',d1Databases:['DB'],bindings:{API_SECRET:SECRET}};
  const mf=new miniflare.Miniflare(miniflare.convertV4MiniflareOptions ? miniflare.convertV4MiniflareOptions(options) : options);
  try {
   const db=await mf.getD1Database('DB');
