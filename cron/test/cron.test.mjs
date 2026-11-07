@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {CRON,DISPATCH_URL,dispatchScheduled,createScheduledHandler} from '../src/index.mjs';
+import worker, {CRON,BOOKING_CRON,DISPATCH_URL,dispatchScheduled,createScheduledHandler} from '../src/index.mjs';
 
 const token='github_pat_'+ 'offline_test_only_'.repeat(3);
 const at=Date.parse('2026-11-04T10:07:00Z'); // 19:07 JST
@@ -10,7 +10,7 @@ const env={GITHUB_DISPATCH_TOKEN:token};
 
 test('UTC cron covers exactly 68 JST ticks within verified operating hours',()=>{
  const config=JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
- assert.deepEqual(config.triggers.crons,[CRON]);
+ assert.deepEqual(config.triggers.crons,[CRON,BOOKING_CRON]);
  assert.equal(config.workers_dev,false);assert.equal(config.preview_urls,false);
  assert.equal(config.d1_databases,undefined);
  const ticks=[];
