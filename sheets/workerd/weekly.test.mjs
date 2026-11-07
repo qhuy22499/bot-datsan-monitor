@@ -16,7 +16,6 @@ test('actual DO/D1: historical receipts, command dedup, Monday proof, restart un
   const index=fileURLToPath(new URL('../src/index.mjs',import.meta.url));
   const entry=join(dir,'entry.mjs'),bundle=join(dir,'bundle.mjs');
   writeFileSync(entry,`import worker,{SheetsCoordinator} from ${JSON.stringify(index)};
-    Date.now=()=>${now};
     export class FixtureCoordinator extends SheetsCoordinator {
       async fetch(r){await this.ready;const p=new URL(r.url).pathname;
         if(p==='/__drain'){await Promise.all([...this.activeUpdates.values()]);return Response.json({ok:true});}
@@ -24,7 +23,7 @@ test('actual DO/D1: historical receipts, command dedup, Monday proof, restart un
         return super.fetch(r);
       }
     }
-    export default {async fetch(r,e){if(new URL(r.url).pathname.startsWith('/__'))return e.SHEETS_COORDINATOR.get(e.SHEETS_COORDINATOR.idFromName('AVAILABLE-v1')).fetch(r);return worker.fetch(r,e);}};`);
+    export default {async fetch(r,e){Date.now=()=>${now};if(new URL(r.url).pathname.startsWith('/__'))return e.SHEETS_COORDINATOR.get(e.SHEETS_COORDINATOR.idFromName('AVAILABLE-v1')).fetch(r);return worker.fetch(r,e);}};`);
   await esbuild.build({entryPoints:[entry],outfile:bundle,bundle:true,format:'esm',platform:'browser',target:'es2022',logLevel:'silent'});
   const options={modules:true,scriptPath:bundle,compatibilityDate:'2025-10-01',
     d1Databases:{DB:'00000000-0000-0000-0000-000000000001'},durableObjects:{SHEETS_COORDINATOR:{className:'FixtureCoordinator',useSQLite:true}},
