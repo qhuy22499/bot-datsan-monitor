@@ -25,7 +25,9 @@ test('actual DO/D1: historical receipts, command dedup, Monday proof, restart un
     }
     export default {async fetch(r,e){Date.now=()=>${now};if(new URL(r.url).pathname.startsWith('/__'))return e.SHEETS_COORDINATOR.get(e.SHEETS_COORDINATOR.idFromName('AVAILABLE-v1')).fetch(r);return worker.fetch(r,e);}};`);
   await esbuild.build({entryPoints:[entry],outfile:bundle,bundle:true,format:'esm',platform:'browser',target:'es2022',logLevel:'silent'});
-  const options={name:'weekly-fixture',modules:true,scriptPath:bundle,compatibilityDate:'2025-10-01',
+  // v5 converter otherwise names /tmp bundle relative to repo cwd with ../,
+  // which workerd rejects as escaping its module root (kj/filesystem.c++319).
+  const options={name:'weekly-fixture',modulesRoot:dir,modules:[{type:'ESModule',path:bundle}],compatibilityDate:'2025-10-01',
     d1Databases:{DB:'00000000-0000-0000-0000-000000000001'},durableObjects:{SHEETS_COORDINATOR:{className:'FixtureCoordinator',useSQLite:true}},
     bindings:{TG_WEBHOOK_SECRET:secret,BOOKED_SYNC_SECRET:secret,BOOKING_CRON_SIGNING_SECRET:secret,GOOGLE_SPREADSHEET_ID:'offline_spreadsheet_identifier_only',TELEGRAM_BOT_USERNAME:'BotDatSan_bot',TELEGRAM_WEBHOOK_ENABLED:'true',TELEGRAM_TEST_CHAT_ID:'-1001',TELEGRAM_BOT_TOKEN:['123456789',':','OFFLINE_ONLY_'.repeat(4)].join('')},
     outboundService:async request=>{

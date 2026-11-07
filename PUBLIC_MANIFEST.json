@@ -97,7 +97,7 @@
     "sheets/src/weekly.mjs": "8cd8292c97fa12061b37ac62bc23190aa895729ab640da3ce24ac8be2ba1dc88",
     "sheets/src/bookings-message.mjs": "59c3a27b271fd4ec3210b1f3696ee6991e549d27bb111b8bb394d9e576f02a4a",
     "sheets/test/bookings-weekly.test.mjs": "9bc32c90770fbeeaf57d5259bcd2c48cea650024f7aee78ce1dad6cae00c5dbc",
-    "sheets/workerd/weekly.test.mjs": "ad3d311adc6302c8a9b86ba67e0b8b1e255566ca8287e810517e7636704f32c1",
+    "sheets/workerd/weekly.test.mjs": "956353908880cc48c9151db0c478c295c8004458949faf87455a86d85ccfd340",
     "booking/WEEKLY.md": "ddf4465974f25344b046dcd01b2e61ef4575c42c3aa929deccff613340fab7c0"
   }
 }
