@@ -113,6 +113,39 @@ test('readWeekly single SELECT validates completed run/lease/groups; incomplete 
  record.attempts_json=JSON.stringify([{group:'A',status:'STARTED'}]);await assert.rejects(readWeekly(db,trigger,MONDAY));
 });
 
+test('weekly incomplete/zero/unverified source has truthful warning, one warning consumes the week',async()=>{
+ for(const mode of ['PARTIAL','ZERO','UNVERIFIED']){
+  const f=ownStore();let text='',sends=0;const s=snapshot();s.groups[2].status='PARTIAL';
+  const read=mode==='PARTIAL'?data(s):mode==='ZERO'?data({groups:groups(),rows:[]}):{status:'UNVERIFIED',groups:groups().map(g=>({...g,status:'FAILED',lastSuccess:null}))};
+  const m=new WeeklyNotifications({store:f.store,env:envBase,clock:()=>MONDAY,read:async()=>read,send:async(e,c,t)=>{text=t;sends++;return{messageId:7};}});
+  try{
+   const input={trigger_id:trigger,signature:await sign(),sheets_status:'UPDATED'};
+   assert.equal((await m.deliver(input)).status,'SENT');await m.deliver(input);assert.equal(sends,1);
+   if(mode==='PARTIAL')assert(text.includes('Group C: PARTIAL'));
+   if(mode==='ZERO')assert(text.includes('chưa có lịch sân'));
+   if(mode==='UNVERIFIED'){assert(text.includes('Không thể xác minh'));assert(text.includes('Group C: FAILED'));assert(!text.includes('Tổng: 0'));}
+  }finally{f.db.close();}
+ }
+ const f=ownStore();try{
+  const m=new WeeklyNotifications({store:f.store,env:envBase,clock:()=>MONDAY,read:async()=>{throw Object.assign(new Error(),{code:'BOOKING_RUN_NOT_FINISHED'});},send:async()=>{throw new Error('NO_SEND');}});
+  assert.equal((await m.deliver({trigger_id:trigger,signature:await sign(),sheets_status:'UPDATED'})).status,'REJECTED');
+  assert.equal(f.store.weekly('WEEKLY_BOOKINGS:2026-11-09'),null);
+ }finally{f.db.close();}
+});
+
+test('bookings source failure and lost Telegram response survive duplicate/restart without a false zero',async t=>{
+ t.mock.method(Date,'now',()=>MONDAY);const f=ownStore(),background=[];let sends=0;
+ const env={...envBase,DB:{withSession:()=>({prepare:()=>({first:async()=>{throw new Error('OFFLINE_D1_FAILURE');}})})},TELEGRAM_BOT_TOKEN:['123456789',':','OFFLINE_ONLY_'.repeat(4)].join('')};
+ const ctx={storage:{sql:f.sql,setAlarm:async()=>{}},blockConcurrencyWhile:fn=>fn(),waitUntil:p=>background.push(p)};
+ const object=new SheetsCoordinator(ctx,env);env.SHEETS_COORDINATOR={idFromName:n=>n,get:()=>({fetch:r=>object.fetch(r)})};
+ t.mock.method(globalThis,'fetch',async(url,init)=>{sends++;assert(JSON.parse(init.body).text.includes('Không thể xác minh'));throw new Error('lost response');});
+ try{
+  await worker.fetch(request('/bookings',23),env);await Promise.all(background);
+  assert.equal(f.store.getUpdate(23).state,'UNCERTAIN');assert.equal(f.store.getUpdate(23).result.total,null);
+  f.store.recover();await worker.fetch(request('/bookings',23),env);await Promise.all(background);assert.equal(sends,1);
+ }finally{f.db.close();}
+});
+
 test('real webhook/DO bookings duplicate and timeout use D1 only; no Google/website calls',async t=>{
  t.mock.method(Date,'now',()=>MONDAY);const f=ownStore(),background=[];let sends=0;
  const s=snapshot();const env={...envBase,DB:{withSession:()=>({prepare:sql=>{assert.equal(sql,BOOKED_SQL);return{first:async()=>({groups_json:JSON.stringify(s.groups),rows_json:JSON.stringify(s.rows)})};}})},TELEGRAM_BOT_TOKEN:['123456789',':','OFFLINE_ONLY_'.repeat(4)].join('')};

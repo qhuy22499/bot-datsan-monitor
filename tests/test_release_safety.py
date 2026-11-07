@@ -122,7 +122,7 @@ class ScheduledTrialContract(unittest.TestCase):
         workflow=(root/'.github/workflows/monitor.yml').read_text(encoding='utf-8')
         self.assertNotIn('\n  schedule:',workflow)
         cron=json.loads((root/'cron/wrangler.jsonc').read_text(encoding='utf-8'))
-        self.assertEqual(cron['triggers']['crons'],['7,22,37,52 0-14,22-23 * * *'])
+        self.assertEqual(cron['triggers']['crons'],['7,22,37,52 0-14,22-23 * * *','30 23 * * *'])
         self.assertFalse(cron['workers_dev']);self.assertFalse(cron['preview_urls'])
         self.assertIn('  workflow_dispatch:',workflow)
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.confirm_test_delivery",workflow)

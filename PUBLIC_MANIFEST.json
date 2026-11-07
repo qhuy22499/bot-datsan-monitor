@@ -37,7 +37,7 @@
     "tests/support.py": "756cd6b27ac16251f2446bc9054c521a118fa76f4921345c2a914d12a7709f9c",
     "tests/test_collector_dom.py": "88198880ec26d4f6583aaa3ff024b6bf88cb643c82098491204dc582b3812bd5",
     "tests/test_deployment.py": "7972e97f24015e39c51cedce0bf0d03137c7fcce851d1ed581cde954ae4d1f21",
-    "tests/test_release_safety.py": "f49ee21658588390cf5ef5ac8f4affa8e4982a2ea9daa46e47b77d13616a8ba5",
+    "tests/test_release_safety.py": "b230f5bdceb96ae0f058ff20b3e167f6c4cfd3e397a10a32199d22dce0fbb170",
     "tools/audit_public.py": "768a0473649b2b191972162047fe01c10b3c89f239cf2f37368c1455b02918fa",
     "tools/export_release.py": "be688a3e8179c42d721a92c2f5c4658fc52a2a68946fc5ae9d4e592e484625f9",
     "tools/verify_origin.py": "9b2a98131fbb1cadf654f81c08cd30da14e0cb7903ea4109568428e14045272d",
@@ -96,7 +96,7 @@
     "tests/test_weekly_runtime.py": "89713b817ace415e62db16f9292b93faf133de643ed0fabff2ee79b47d331229",
     "sheets/src/weekly.mjs": "8cd8292c97fa12061b37ac62bc23190aa895729ab640da3ce24ac8be2ba1dc88",
     "sheets/src/bookings-message.mjs": "59c3a27b271fd4ec3210b1f3696ee6991e549d27bb111b8bb394d9e576f02a4a",
-    "sheets/test/bookings-weekly.test.mjs": "86778146cb542abd2efc7cacc42b79ac612f06b7821eca91a61ef76632ce2192",
+    "sheets/test/bookings-weekly.test.mjs": "9bc32c90770fbeeaf57d5259bcd2c48cea650024f7aee78ce1dad6cae00c5dbc",
     "sheets/workerd/weekly.test.mjs": "ec76d3c6d5a71f526a821c9d5c340f9d2908d1f81d2b44e8fede41533ff6b81e",
     "booking/WEEKLY.md": "ddf4465974f25344b046dcd01b2e61ef4575c42c3aa929deccff613340fab7c0"
   }
