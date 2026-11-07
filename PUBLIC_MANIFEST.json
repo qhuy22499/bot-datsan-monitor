@@ -82,7 +82,7 @@
     "worker/src/bookings.mjs": "133acb646ca73c9905c414886421ca1e3ac1101dca9e52a576d87c184c8abb27",
     ".github/workflows/booking-sync.yml": "4fb75ca82a469fbbecafaed21ccd451b28fcd85d4560bce1a79c5646e6a439f5",
     "booking/login_probe.js": "7172e08e8ef6b7a55c6d2efd41245bcde0ccc3d832c689077ed0f8c1928a9195",
-    "booking/PROVENANCE.json": "b3fce6410d85379bf3648d12b24973697a1ff6907fc5ba80fd7ed865765ac106",
+    "booking/PROVENANCE.json": "2560d4bebe8bd7f6010471cb3d2a8de74849f2993b0fbce5fa050a4a0ca39ab5",
     "worker/migrations/0003_bookings.sql": "55bbbb8129802155762d8aeeaf6a29f38b942d58f3861dfcac84658e18c6efaf",
     "booking/extract.js": "bc4fe95b1b86c4abb9a25e36cd45217ede16277468d5a131f5aada71fc545381",
     "cron/test/booking.test.mjs": "907408c01c22d55f7a3ddc9d5937271407306c40042d423fc609b5603d4668d3",
