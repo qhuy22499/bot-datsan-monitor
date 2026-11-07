@@ -2,7 +2,7 @@
   "schema": "public-allowlist-v1",
   "files": {
     ".github/workflows/monitor.yml": "939aedd3d101e92c3f4247218f6a6f75eaa2b86b257d3839033790f23c641d26",
-    ".github/workflows/validate.yml": "abf404207fcab105c6aad0d31c6299b8858e556dabd4fa436bb64f9444ae77b7",
+    ".github/workflows/validate.yml": "d6653be1bd1efb69cb66b74d09440aa3bee965ca10c166e64ec53a67644eca39",
     ".gitignore": "1705bcaee677c2370dd68e2c494daebb01419ac848b5dcbbfdf708b88ab394f2",
     ".gitleaks.toml": "da77c5a19b14f0dc5b963ab08f55b654994c119224f6925ec5220027ecc5510a",
     "BASELINE_AND_MIGRATION.md": "177cb2eb55d2f4531176bccbbac4b9c591441b4b42bc2e5e9db4aa155826239c",
@@ -97,7 +97,7 @@
     "sheets/src/weekly.mjs": "8cd8292c97fa12061b37ac62bc23190aa895729ab640da3ce24ac8be2ba1dc88",
     "sheets/src/bookings-message.mjs": "59c3a27b271fd4ec3210b1f3696ee6991e549d27bb111b8bb394d9e576f02a4a",
     "sheets/test/bookings-weekly.test.mjs": "9bc32c90770fbeeaf57d5259bcd2c48cea650024f7aee78ce1dad6cae00c5dbc",
-    "sheets/workerd/weekly.test.mjs": "b520abd8b10576b7ab5e9239078ae89c911ee2c4b4c512ff6fe958f406ac72e2",
+    "sheets/workerd/weekly.test.mjs": "ad3d311adc6302c8a9b86ba67e0b8b1e255566ca8287e810517e7636704f32c1",
     "booking/WEEKLY.md": "ddf4465974f25344b046dcd01b2e61ef4575c42c3aa929deccff613340fab7c0"
   }
 }

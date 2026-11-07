@@ -1,6 +1,11 @@
 name: Offline package validation (manual)
 on:
   workflow_dispatch:
+    inputs:
+      weekly_only:
+        description: Target only weekly/Sheets/Cron tests after harness-only fixes
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -24,28 +29,35 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      - if: ${{ !inputs.weekly_only }}
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.22.2'
-      - run: |
+      - if: ${{ !inputs.weekly_only }}
+        run: |
           python -m pip install --require-hashes --only-binary=:all: -r requirements.lock
-      - run: python -m playwright install --with-deps chromium
+      - if: ${{ !inputs.weekly_only }}
+        run: python -m playwright install --with-deps chromium
       - run: npm ci --ignore-scripts
         working-directory: worker
       - run: python tools/audit_public.py
       - name: Cron trigger contract (offline, no dispatch)
         run: node --test cron/test/*.test.mjs
-      - run: python -m unittest tests.test_deployment tests.test_notification_v2 tests.test_collector_dom tests.test_release_safety tests.test_bookings tests.test_weekly_runtime -v
+      - if: ${{ !inputs.weekly_only }}
+        run: python -m unittest tests.test_deployment tests.test_notification_v2 tests.test_collector_dom tests.test_release_safety tests.test_bookings tests.test_weekly_runtime -v
       - run: node --test sheets/test/*.test.mjs
       - name: Weekly actual SQLite Durable Object and D1 (offline network)
         run: node --test --test-timeout=120000 sheets/workerd/weekly.test.mjs
-      - run: python -m monitor.runtime --dry-run
-      - run: node --test --test-timeout=120000 test/api.test.mjs test/miniflare.test.mjs
+      - if: ${{ !inputs.weekly_only }}
+        run: python -m monitor.runtime --dry-run
+      - if: ${{ !inputs.weekly_only }}
+        run: node --test --test-timeout=120000 test/api.test.mjs test/miniflare.test.mjs
         working-directory: worker
       - name: Full lifecycle contract against actual local D1 (no shim fallback)
+        if: ${{ !inputs.weekly_only }}
         env:
           MONITOR_TEST_STORAGE: workerd
         run: python -m unittest tests.test_deployment.Integration tests.test_notification_v2 tests.test_bookings.BookingIntegration -fv
