@@ -106,10 +106,10 @@ export async function parseWebhook(request, env) {
     throw new WebhookError('WEBHOOK_CHAT_REJECTED', 403);
   }
   if (message.from?.is_bot === true || typeof message.text !== 'string' || message.text.length > 100) return null;
-  const command = message.text.trim().match(/^\/(available|priority)(?:@([A-Za-z0-9_]{5,32}))?$/);
-  if (!command || (command[2] && command[2].toLowerCase() !== username.toLowerCase())) return null;
+  const command = message.text.trim().match(/^\/(available|priority|bookings)(?:@([A-Za-z0-9_]{5,32}))?(?:\s+(next))?$/);
+  if (!command || (command[3] && command[1]!=='bookings') || (command[2] && command[2].toLowerCase() !== username.toLowerCase())) return null;
   // Persist only the routing/dedup identifiers, never member identity or text.
-  return {updateId: update.update_id, chatId: allowedChat, command: command[1]};
+  return {updateId: update.update_id, chatId: allowedChat, command: command[1]==='bookings'?(command[3]?'bookings_next':'bookings_current'):command[1]};
 }
 
 // Input rows have already passed the same COMPLETE snapshot validation as

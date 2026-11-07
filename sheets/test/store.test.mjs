@@ -26,7 +26,7 @@ test('SQLite coordinator owns only isolated tables; sync state survives a new wr
     store.writeSync(state);
     assert.deepEqual(new CoordinatorStore(sql).readSync(), state);
     assert.deepEqual(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-      .all().map(row => row.name), ['sheets_coordinator_state', 'sheets_webhook_inbox']);
+      .all().map(row => row.name), ['booking_weekly_receipts','sheets_coordinator_state', 'sheets_webhook_inbox']);
     assert.ok(statements.every(text => !/\b(?:slots|scans|source|lease|opportunities|jobs|members|batches)\b/i.test(text)));
   } finally { db.close(); }
 });

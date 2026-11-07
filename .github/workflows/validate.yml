@@ -38,8 +38,10 @@ jobs:
       - run: python tools/audit_public.py
       - name: Cron trigger contract (offline, no dispatch)
         run: node --test cron/test/*.test.mjs
-      - run: python -m unittest tests.test_deployment tests.test_notification_v2 tests.test_collector_dom tests.test_release_safety tests.test_bookings -v
+      - run: python -m unittest tests.test_deployment tests.test_notification_v2 tests.test_collector_dom tests.test_release_safety tests.test_bookings tests.test_weekly_runtime -v
       - run: node --test sheets/test/*.test.mjs
+      - name: Weekly actual SQLite Durable Object and D1 (offline network)
+        run: node --test --test-timeout=120000 sheets/workerd/weekly.test.mjs
       - run: python -m monitor.runtime --dry-run
       - run: node --test --test-timeout=120000 test/api.test.mjs test/miniflare.test.mjs
         working-directory: worker

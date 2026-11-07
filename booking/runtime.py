@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import uuid
+from datetime import datetime,timezone,timedelta
 from urllib.request import Request, build_opener
 from urllib.error import HTTPError
 from monitor.storage import D1Storage, NoRedirect
@@ -23,6 +24,30 @@ def sync_booked(*,opener=None):
     except HTTPError as error:
         return {'status':'UNCONFIRMED' if error.code>=500 else 'FAILED','code':'BOOKED_SYNC_HTTP_'+str(error.code)}
     except Exception:return {'status':'UNCONFIRMED','code':'BOOKED_SYNC_NOT_CONFIRMED'}
+
+def weekly_candidate(trigger,signature,*,now=None,sheets_only=False):
+    """Cheap routing only; Worker independently verifies HMAC + D1 completion."""
+    import re
+    if sheets_only or not isinstance(trigger,str) or not re.fullmatch(r'cfbooking-\d{13}',trigger) or not isinstance(signature,str) or not re.fullmatch(r'[a-f0-9]{64}',signature):return False
+    try:
+        utc=datetime.fromtimestamp(int(trigger[10:])/1000,timezone.utc)
+        local=utc.astimezone(timezone(timedelta(hours=9)))
+        current=(now or datetime.now(timezone.utc)).astimezone(timezone(timedelta(hours=9)))
+        return utc.hour==23 and utc.minute==30 and utc.second==0 and utc.microsecond==0 and local.weekday()==0 and local.date()==current.date() and utc<=current
+    except (ValueError,OverflowError,OSError):return False
+
+def send_weekly(trigger,sheets,*,opener=None):
+    signature=os.environ.get('BOOKING_TRIGGER_SIGNATURE','')
+    if not weekly_candidate(trigger,signature):return {'status':'SKIPPED','code':'NOT_SCHEDULED_MONDAY'}
+    try:
+        secret=os.environ['BOOKED_SYNC_SECRET']
+        req=Request('https://bot-datsan-sheets.phanquanghuy484.workers.dev/booked/weekly',method='POST',
+            data=json.dumps({'trigger_id':trigger,'signature':signature,'sheets_status':sheets['status']}).encode(),
+            headers={'Authorization':'Bearer '+secret,'Content-Type':'application/json','User-Agent':'BotDatSan-Monitor/1.0'})
+        with (opener or build_opener(NoRedirect())).open(req,timeout=30) as response:
+            data=json.loads(response.read(10000))
+        return {k:data.get(k) for k in ['status','code','messageId','duplicate']}
+    except Exception:return {'status':'UNCONFIRMED','code':'WEEKLY_HTTP_NOT_CONFIRMED_NO_RETRY'}
 
 def main():
     report={'kind':'BOOKING_SYNC','execution_allowed':False,'auto_booking_allowed':False,'groups':{}}
@@ -60,8 +85,11 @@ def main():
     finally:storage.call('booking_release',fence)
     # D1 results are already durable. Failure below NEVER causes relogin/replay.
     report['sheets']=sync_booked()
+    # Only reached after all group result calls returned and the booking lease
+    # was released. Sheet failure does not suppress a trustworthy D1 summary.
+    report['weekly']=send_weekly(run,report['sheets'])
     print(json.dumps(report,ensure_ascii=True),flush=True)
-    return 0 if all(g.get('status')=='COMPLETE' for g in report['groups'].values()) and report['sheets']['status'] in ['UPDATED','SKIPPED'] else 2
+    return 0 if all(g.get('status')=='COMPLETE' for g in report['groups'].values()) and report['sheets']['status'] in ['UPDATED','SKIPPED'] and report['weekly']['status'] in ['SKIPPED','SENT'] else 2
 
 if __name__=='__main__':
     try:sys.exit(main())

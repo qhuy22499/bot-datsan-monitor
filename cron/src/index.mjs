@@ -26,6 +26,13 @@ export async function dispatchScheduled(controller, env, {
   const triggerId = correlationId ?? `${booking?'cfbooking':'cfcron'}-${at}`;
   if (!(booking?/^cfbooking-\d{13}(?:-[a-f0-9]{8})?$/:/^cfcron-\d{13}(?:-[a-f0-9]{8})?$/).test(triggerId))
     return {status: 'FAILED', reason: 'INVALID_CORRELATION_ID'};
+  let signature;
+  if(booking){
+    if(typeof env.BOOKING_CRON_SIGNING_SECRET!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(env.BOOKING_CRON_SIGNING_SECRET))
+      return {status:'FAILED',reason:'BOOKING_SIGNING_NOT_CONFIGURED'};
+    const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.BOOKING_CRON_SIGNING_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+    signature=[...new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode('BOOKING_CRON_V1:'+triggerId)))].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }
   const started = performance.now();
   try {
     const response = await fetcher(booking?BOOKING_DISPATCH_URL:DISPATCH_URL, {
@@ -35,7 +42,7 @@ export async function dispatchScheduled(controller, env, {
       headers: {'Authorization': `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
         'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
         'User-Agent': 'BotDatSan-Cloudflare-Cron/1.0', 'X-GitHub-Api-Version': '2026-03-10'},
-      body: JSON.stringify({ref: 'main', inputs: booking?{trigger_id:triggerId}: {
+      body: JSON.stringify({ref: 'main', inputs: booking?{trigger_id:triggerId,trigger_signature:signature}: {
         confirm_test_delivery: true, telegram_transport_test: false,
         dispatch_source: 'cloudflare_cron', trigger_id: triggerId,
       }}),

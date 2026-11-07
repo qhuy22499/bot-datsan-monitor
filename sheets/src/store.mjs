@@ -7,7 +7,7 @@ const messageId = value => Number.isSafeInteger(value) && value > 0;
 const decode = row => row ? {
   updateId: row.update_id,
   chatId: row.chat_id,
-  command: row.command,
+  command: JSON.parse(row.detail).route ?? row.command,
   receivedAt: row.received_at,
   deadlineAt: row.deadline_at,
   state: row.state,
@@ -29,6 +29,9 @@ export class CoordinatorStore {
       detail TEXT NOT NULL DEFAULT '{}',
       command TEXT NOT NULL DEFAULT 'available' CHECK (command IN ('available','priority'))
     )`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS booking_weekly_receipts (
+      id TEXT PRIMARY KEY, state TEXT NOT NULL CHECK(state IN ('PENDING','IN_FLIGHT','SENT','FAILED','UNCERTAIN')),
+      detail TEXT NOT NULL DEFAULT '{}')`);
     // Additive migration in the isolated DO only. Existing inbox rows retain
     // their receipts and are all the original /available command.
     if (!sql.exec('PRAGMA table_info(sheets_webhook_inbox)').toArray().some(row => row.name === 'command')) {
@@ -36,6 +39,23 @@ export class CoordinatorStore {
     }
   }
 
+  weekly(id) {
+    if(typeof id!=='string'||!/^WEEKLY_BOOKINGS(?:_TEST)?:[A-Z0-9_-]{1,50}$/.test(id))throw new Error('INVALID_WEEKLY_ID');
+    const row=this.sql.exec('SELECT * FROM booking_weekly_receipts WHERE id=?',id).toArray()[0];
+    return row?{id:row.id,state:row.state,...JSON.parse(row.detail)}:null;
+  }
+  weeklyIntent(id,detail) {
+    this.weekly(id);
+    this.sql.exec("INSERT OR IGNORE INTO booking_weekly_receipts(id,state,detail) VALUES(?,'PENDING',?)",id,JSON.stringify(detail));
+  }
+  weeklyClaim(id) {
+    this.weekly(id);
+    return this.sql.exec("UPDATE booking_weekly_receipts SET state='IN_FLIGHT' WHERE id=? AND state='PENDING' RETURNING id",id).toArray().length===1;
+  }
+  weeklyFinish(id,state,detail) {
+    if(!TERMINAL.has(state))throw new Error('INVALID_WEEKLY_STATE');this.weekly(id);
+    this.sql.exec("UPDATE booking_weekly_receipts SET state=?,detail=? WHERE id=? AND state='IN_FLIGHT'",state,JSON.stringify(detail),id);
+  }
   readSync() {
     const row = this.sql.exec(
       "SELECT value FROM sheets_coordinator_state WHERE id = 'sync'",
@@ -56,12 +76,13 @@ export class CoordinatorStore {
         || typeof update.chatId !== 'string' || !/^-?\d{1,20}$/.test(update.chatId)
         || !integer(update.receivedAt) || !integer(update.deadlineAt)
         || update.deadlineAt < update.receivedAt
-        || !['available','priority'].includes(update.command ?? 'available')) throw new Error('INVALID_INBOX_UPDATE');
+        || !['available','priority','bookings_current','bookings_next'].includes(update.command ?? 'available')) throw new Error('INVALID_INBOX_UPDATE');
     // Store only fields needed to reply. Raw Telegram payload/user data are excluded.
     const rows = this.sql.exec(`INSERT OR IGNORE INTO sheets_webhook_inbox
-      (update_id, chat_id, received_at, deadline_at, state, command) VALUES (?, ?, ?, ?, 'PENDING', ?)
+      (update_id, chat_id, received_at, deadline_at, state, command, detail) VALUES (?, ?, ?, ?, 'PENDING', ?, ?)
       RETURNING *`, update.updateId, update.chatId, update.receivedAt, update.deadlineAt,
-    update.command ?? 'available').toArray();
+    update.command?.startsWith('bookings_')?'priority':update.command ?? 'available',
+    JSON.stringify(update.command?.startsWith('bookings_')?{route:update.command}:{})).toArray();
     return {accepted: rows.length === 1, record: rows.length ? decode(rows[0]) : this.getUpdate(update.updateId)};
   }
 
@@ -88,7 +109,8 @@ export class CoordinatorStore {
     if (!updateId(id) || !TERMINAL.has(state) || !detail || typeof detail !== 'object') {
       throw new Error('INVALID_UPDATE_RESULT');
     }
-    const safe = {};
+    const route=this.getUpdate(id)?.command;
+    const safe = route?.startsWith('bookings_')?{route}:{};
     if (detail.messageId !== undefined) {
       if (!messageId(detail.messageId)) throw new Error('INVALID_MESSAGE_ID');
       safe.messageId = detail.messageId;
@@ -122,13 +144,14 @@ export class CoordinatorStore {
   }
 
   recover() {
+    this.sql.exec("UPDATE booking_weekly_receipts SET state='UNCERTAIN',detail=json_set(detail,'$.code','INTERRUPTED_TELEGRAM_SEND') WHERE state='IN_FLIGHT'");
     const sync = this.readSync();
     const syncRecovered = sync.phase === 'WRITING';
     if (syncRecovered) this.writeSync({...sync, phase: 'UNCERTAIN', code: 'INTERRUPTED_SYNC'});
     const requeued = this.sql.exec(`UPDATE sheets_webhook_inbox SET state = 'PENDING'
       WHERE state = 'WORKING' RETURNING update_id`).toArray();
     const uncertain = this.sql.exec(`UPDATE sheets_webhook_inbox
-      SET state = 'UNCERTAIN', detail = '{"code":"INTERRUPTED_TELEGRAM_SEND"}'
+      SET state = 'UNCERTAIN', detail = json_set(detail,'$.code','INTERRUPTED_TELEGRAM_SEND')
       WHERE state = 'REPLY_SENDING' RETURNING update_id`).toArray();
     return {syncRecovered, updatesRequeued: requeued.length, repliesUncertain: uncertain.length};
   }

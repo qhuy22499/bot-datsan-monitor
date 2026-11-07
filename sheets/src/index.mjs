@@ -1,3 +1,5 @@
+import {bookingsMessage} from './bookings-message.mjs';
+import {WeeklyNotifications} from './weekly.mjs';
 import {readBooked,projectBooked,bookedValues} from './booked.mjs';
 import {readAvailability,projectAvailability} from './read-model.mjs';
 import {GoogleSheets} from './google.mjs';
@@ -27,15 +29,22 @@ export function validScheduledEvent(controller,nowMs) {
 export default {
   async fetch(request,env) {
     const receivedAt=Date.now();
-    if(['/booked/sync','/booked/verify'].includes(new URL(request.url).pathname)) {
+    if(['/booked/sync','/booked/verify','/booked/weekly','/booked/weekly-test','/booked/receipts'].includes(new URL(request.url).pathname)) {
       if(request.method!=='POST'||new URL(request.url).search)return safeJSON({status:'FAILED',code:'METHOD_NOT_ALLOWED'},405);
       if(typeof env.BOOKED_SYNC_SECRET!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(env.BOOKED_SYNC_SECRET))return safeJSON({status:'FAILED',code:'NOT_CONFIGURED'},503);
       const digest=async s=>new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));
       const [given,wanted]=await Promise.all([digest(request.headers.get('Authorization')||''),digest('Bearer '+env.BOOKED_SYNC_SECRET)]);
       let diff=0;for(let i=0;i<given.length;i++)diff|=given[i]^wanted[i];
       if(diff)return safeJSON({status:'FAILED',code:'UNAUTHORIZED'},401);
-      const target=env.SHEETS_COORDINATOR.get(env.SHEETS_COORDINATOR.idFromName('BOOKED-v1'));
-      return target.fetch(new Request('https://coordinator.internal'+new URL(request.url).pathname,{method:'POST'}));
+      const path=new URL(request.url).pathname;
+      let body='{}';
+      if(path==='/booked/weekly'){
+        if(Number(request.headers.get('Content-Length')||0)>1000)return safeJSON({status:'REJECTED',code:'INVALID_BODY'},400);
+        const text=await request.text();if(text.length>1000)return safeJSON({status:'REJECTED',code:'INVALID_BODY'},400);
+        body=text;
+      }
+      const target=path==='/booked/weekly'||path==='/booked/weekly-test'||path==='/booked/receipts'?singleton(env):env.SHEETS_COORDINATOR.get(env.SHEETS_COORDINATOR.idFromName('BOOKED-v1'));
+      return target.fetch(new Request('https://coordinator.internal'+new URL(request.url).pathname,{method:'POST',body}));
     }
     if (env.TELEGRAM_WEBHOOK_ENABLED!=='true'
         || new URL(request.url).pathname!=='/telegram/webhook' || request.method!=='POST')
@@ -90,6 +99,19 @@ export class SheetsCoordinator {
     await this.ready;
     const path=new URL(request.url).pathname;
     if(request.method!=='POST')return new Response('Not Found',{status:404});
+    if(path==='/booked/weekly'||path==='/booked/weekly-test') {
+      try{
+        const result=await new WeeklyNotifications({store:this.store,env:this.env}).deliver(path==='/booked/weekly'?await request.json():{}, {test:path==='/booked/weekly-test'});
+        console.log(JSON.stringify({kind:'WEEKLY_BOOKINGS_DELIVERY',test:path==='/booked/weekly-test',...result,...safety}));
+        return safeJSON(result);
+      }catch{return safeJSON({status:'FAILED',code:'WEEKLY_PROCESSING_UNAVAILABLE'},503);}
+    }
+    if(path==='/booked/receipts'){
+      // Authenticated diagnostics: bounded receipt identifiers/status only.
+      return safeJSON({inbox:this.store.sql.exec("SELECT update_id,state,command,detail FROM sheets_webhook_inbox ORDER BY update_id DESC LIMIT 10").toArray().map(r=>{
+        const v=JSON.parse(r.detail);return {updateId:r.update_id,state:r.state,command:v.route??r.command,messageId:v.messageId??null,result:v.result??null};
+      }),weekly:this.store.sql.exec("SELECT id,state,detail FROM booking_weekly_receipts ORDER BY id DESC LIMIT 10").toArray().map(r=>({id:r.id,state:r.state,...JSON.parse(r.detail)}))});
+    }
     if(path==='/booked/sync'||path==='/booked/verify') {
       try{
         if(!this.bookedCoordinator)this.bookedCoordinator=new SyncCoordinator({store:this.store,
@@ -119,7 +141,7 @@ export class SheetsCoordinator {
       const input=await request.json();
       // Defense in depth even though only authenticated outer handler calls us.
       if(input.chatId!==this.env.TELEGRAM_TEST_CHAT_ID || !Number.isSafeInteger(input.updateId) || input.updateId<0
-          || !['available','priority'].includes(input.command ?? 'available'))
+          || !['available','priority','bookings_current','bookings_next'].includes(input.command ?? 'available'))
         return safeJSON({ok:false},403);
       const now=Date.now();
       const receivedAt=input.receivedAt ?? now;
@@ -148,7 +170,21 @@ export class SheetsCoordinator {
     const record=this.store.claimUpdate(id);
     if(!record)return;
     let result,text;
-    if(record.command==='priority') {
+    if(record.command==='bookings_current'||record.command==='bookings_next') {
+      let timer;
+      const offset=record.command==='bookings_next'?1:0;
+      try{
+        const remaining=record.deadlineAt-Date.now();if(remaining<=0)throw new Error('BOOKINGS_TIMEOUT');
+        const expired=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('BOOKINGS_TIMEOUT')),remaining);});
+        const data=await Promise.race([readBooked(this.env.DB,Date.now()),expired]);
+        const current=data.snapshot?projectBooked(data.snapshot,Date.now()):data;
+        const message=bookingsMessage({status:'READ',...current},this.env.GOOGLE_SPREADSHEET_ID,{offset});
+        text=message.text;result={status:'READ',total:message.total,days:message.days,hidden:message.hidden,week:message.week,complete:message.complete};
+      }catch{
+        const message=bookingsMessage({status:'UNVERIFIED'},this.env.GOOGLE_SPREADSHEET_ID,{offset});
+        text=message.text;result={status:'FAILED',code:'BOOKINGS_SOURCE_UNCONFIRMED',total:null};
+      }finally{clearTimeout(timer);}
+    }else if(record.command==='priority') {
       let timer;
       try {
         const remaining=record.deadlineAt-Date.now();
