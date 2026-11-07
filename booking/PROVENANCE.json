@@ -1,10 +1,11 @@
-{
-  "origin": "Windows PoC03/04 READ_ONLY, source files remain untouched",
-  "sha256": {
-    "poc03_auto_login.py": "b7484c2b6d13f00d3970ddb6f2e1c6d07767bd5fcdce42836aeaae503cdf4952",
-    "poc03_login_probe.js": "7172e08e8ef6b7a55c6d2efd41245bcde0ccc3d832c689077ed0f8c1928a9195",
-    "poc03b_extract_reservations.js": "bc4fe95b1b86c4abb9a25e36cd45217ede16277468d5a131f5aada71fc545381",
-    "poc03b_data.py": "b38c50bba821a7ad032b53bd93637363a74d751d3f64e08e077ab446593771bc"
-  },
-  "ports": "AST-selected login/field validators; exact JS probes. New orchestration supplies environment credentials; no Windows vault transfer."
+﻿{
+    "origin":  "Windows PoC03/04 READ_ONLY, source files remain untouched",
+    "sha256":  {
+                   "poc03_auto_login.py":  "b7484c2b6d13f00d3970ddb6f2e1c6d07767bd5fcdce42836aeaae503cdf4952",
+                   "poc03_login_probe.js":  "7172e08e8ef6b7a55c6d2efd41245bcde0ccc3d832c689077ed0f8c1928a9195",
+                   "poc03b_extract_reservations.js":  "bc4fe95b1b86c4abb9a25e36cd45217ede16277468d5a131f5aada71fc545381",
+                   "poc03b_data.py":  "b38c50bba821a7ad032b53bd93637363a74d751d3f64e08e077ab446593771bc",
+                   "poc03b_e2e_oracle.js":  "0b375f06d1d4fd9faf6e3f6124d49755e7caac3a72fe2cb516c9214b89a5d7bc"
+               },
+    "ports":  "AST-selected login/field validators; exact JS probes. New orchestration supplies environment credentials; no Windows vault transfer."
 }

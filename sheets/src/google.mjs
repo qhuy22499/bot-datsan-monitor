@@ -310,7 +310,9 @@ export class GoogleSheets {
       }}}});
       // Set readable mobile widths, without affecting column F onward or any
       // other formatting (number formats, borders, custom views, tab identity).
-      for (const [startIndex, endIndex, pixelSize] of [[0, 1, 48], [1, 2, 108], [2, 3, 48], [3, 4, 120], [4, 5, 180]]) {
+      for (const [startIndex, endIndex, pixelSize] of (this.#title==='BOOKED'
+        ? [[0,1,160],[1,2,130],[2,3,48],[3,4,70],[4,5,200]]
+        : [[0, 1, 48], [1, 2, 108], [2, 3, 48], [3, 4, 120], [4, 5, 180]])) {
         requests.push({updateDimensionProperties: {
           range: {sheetId, dimension: 'COLUMNS', startIndex, endIndex},
           properties: {pixelSize}, fields: 'pixelSize',

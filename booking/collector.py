@@ -11,6 +11,7 @@ from .fields import _date_text, _times, _number, _reservation_status, _payment_s
 
 JST = timezone(timedelta(hours=9))
 EXTRACT = Path(__file__).with_name('extract.js').read_text(encoding='utf-8')
+ORACLE = Path(__file__).with_name('oracle.js').read_text(encoding='utf-8')
 DISPLAY = r'''() => {
   if(location.origin!=='https://rsv.shisetsu.city.katsushika.lg.jp')return null;
   const names=new Set();
@@ -84,6 +85,16 @@ def read_pages(page, group):
     snapshots=[]
     for _ in range(100):
         s=page.evaluate(EXTRACT);snapshots.append(s)
+        try:
+            oracle=page.evaluate(ORACLE)
+            expected=[(r['reservation_number'],_date_text(r['usage_date_text']).isoformat(),*_times(r['time_text']),
+                       r['facility'],r['court_label'][-1] if r['court_label'] in ['フットサル場A','フットサル場B'] else 'OTHER_COURT',r['payment_status_raw']) for r in s['rows']]
+            actual=[(r['reservation_number'],r['usage_date'],r['start_time'],r['end_time'],r['facility'],r['court'],r['payment_raw']) for r in oracle['rows']]
+            if (oracle['state']!='READY' or oracle['source_row_count']!=s['source_row_count']
+                or oracle['counters']!=s['pagination']['summaries'] or expected!=actual):
+                raise ValueError()
+        except Exception:
+            s['issues'].append('DOM_ORACLE_MISMATCH');break
         p=s.get('pagination',{});ns=p.get('summaries',[])
         if s.get('state')!='READY' or len(ns)!=1 or s.get('issues'):break
         n=ns[0]

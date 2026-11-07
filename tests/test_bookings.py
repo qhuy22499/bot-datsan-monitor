@@ -1,7 +1,7 @@
 import copy
 import unittest
 from pathlib import Path
-from booking.collector import summarize, DISPLAY
+from booking.collector import summarize, DISPLAY, read_pages
 from booking.login import LoginAttempt
 from tests.support import Worker,T0
 
@@ -68,6 +68,20 @@ class HeaderDOM(unittest.TestCase):
             self.assertEqual(page.evaluate(DISPLAY),'ＭＯＫＯ　ＦＣ')
             page.set_content('<span>利用者：別名様</span><span>利用者：ＭＯＫＯ　ＦＣ様</span>');self.assertIsNone(page.evaluate(DISPLAY))
             page.set_content('<input id="userId" value="never-display-this">');self.assertIsNone(page.evaluate(DISPLAY))
+        finally:ctx.close()
+    def test_actual_extract_oracle_paginated_dom_and_empty(self):
+        ctx=self.browser.new_context();page=ctx.new_page()
+        header='<tr><th>予約番号</th><th>利用日</th><th>時間</th><th>館</th><th>施設</th><th>支払状況</th></tr>'
+        def tr(day):return f'<tr><td>12345</td><td>{day}</td><td>18:30～20:30</td><td>小菅西フットサル場</td><td>フットサル場B</td><td>支払前</td></tr>'
+        html='<a>ログアウト</a><h1>予約一覧</h1><span>利用者：ＦＣ　テスト様</span><p id="counter">2件中 1～1件表示</p><table>'+header+'<tbody id="rows">'+tr('2026-11-08')+'</tbody></table>'
+        html+='<a id="next" href="#">次へ</a><script>document.getElementById("next").onclick=()=>{document.getElementById("rows").innerHTML='+__import__('json').dumps(tr('2026-11-15'))+';document.getElementById("counter").textContent="2件中 2～2件表示";document.getElementById("next").remove();return false;};</script>'
+        try:
+            page.route('https://rsv.shisetsu.city.katsushika.lg.jp/**',lambda route:route.fulfill(content_type='text/html; charset=utf-8',body=html))
+            page.goto('https://rsv.shisetsu.city.katsushika.lg.jp/test')
+            r=read_pages(page,'A');self.assertEqual(r['status'],'COMPLETE');self.assertEqual(r['pages'],2);self.assertEqual(len(r['rows']),2)
+            self.assertEqual(r['display_name'],'ＦＣ　テスト')
+            page.set_content('<a>ログアウト</a><h1>予約一覧</h1><p>0件中 0～0件表示</p><table>'+header+'</table>')
+            r=read_pages(page,'B');self.assertEqual(r['status'],'COMPLETE');self.assertEqual(r['source_count'],0)
         finally:ctx.close()
 
 class BookingIntegration(unittest.TestCase):
