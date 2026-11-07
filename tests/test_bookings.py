@@ -36,6 +36,9 @@ class Fields(unittest.TestCase):
         self.assertEqual(summarize([a],'A')['status'],'PARTIAL')
         b['pagination']['summaries'][0]['first']=1
         self.assertNotEqual(summarize([a,b],'A')['status'],'COMPLETE')
+    def test_last_page_counter_proves_coverage_even_with_pager_candidates(self):
+        s=snapshot([row(),row('2026-11-15')]);s['pagination'].update(next_candidate_count=1,previous_candidate_count=1)
+        r=summarize([s],'A');self.assertEqual(r['status'],'COMPLETE');self.assertEqual(len(r['rows']),2)
     def test_bad_fields_and_session_do_not_become_zero(self):
         for field,value in [('time_text','25:00–26:00'),('usage_date_text','2026-02-30')]:
             r=row();r[field]=value;self.assertNotEqual(summarize([snapshot([r])],'A')['status'],'COMPLETE')

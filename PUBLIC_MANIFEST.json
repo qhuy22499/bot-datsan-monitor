@@ -87,10 +87,10 @@
     "booking/extract.js": "bc4fe95b1b86c4abb9a25e36cd45217ede16277468d5a131f5aada71fc545381",
     "cron/test/booking.test.mjs": "907408c01c22d55f7a3ddc9d5937271407306c40042d423fc609b5603d4668d3",
     "booking/README.md": "85ae16798cb429387563eb6d45cf09bf035c04589926784c8490805ec9b6e3b1",
-    "tests/test_bookings.py": "85d35527685b1deb36ce1bcb86bd2f556e37d3474c4150cbd42c1ce6359dfff0",
+    "tests/test_bookings.py": "82d09dedee98434c642a2b22db1e2d4799b570aba719e40456d5c86a68843cd2",
     "booking/__init__.py": "86d36e5f2e55252c9ba2b3c0e01dfa154b69031f0327c1c26f4b2b486e2ba140",
     "booking/login.py": "041703a48653f433383448f8ab90eb0271f7aea28d9d27bcecf7e09893cd5429",
-    "booking/collector.py": "472d47975c2526c00cef46ab2b1b6153e07d54afcffacb6a5058e305be276a8f",
+    "booking/collector.py": "63caa247d05f4407bdca1e4655503602ed8e8a05239e3e4ce18e7b80bd4db63a",
     "sheets/src/booked.mjs": "c7885081887106b6a830638dbb870b408b87605e35c14211456ca8e2a42ad114",
     "booking/oracle.js": "0b375f06d1d4fd9faf6e3f6124d49755e7caac3a72fe2cb516c9214b89a5d7bc"
   }

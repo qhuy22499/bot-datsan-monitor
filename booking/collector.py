@@ -65,7 +65,10 @@ def summarize(snapshots, group):
                         payment_status=pay['normalized'],payment_raw=pay['raw']))
             last=n['last'];out['pages']+=1;out['source_count']+=count
         if not snapshots:raise ValueError()
-        if last!=total or snapshots[-1]['pagination']['next_candidate_count']:
+        # The verified website keeps 前へ/次へ candidates on its last/only page
+        # (PoC04 E2E evidence). Counter coverage, not candidate presence, proves
+        # exhaustion. Never click Next after last==total.
+        if last!=total:
             out.update(status='PARTIAL',code='PAGINATION_INCOMPLETE');return out
         # Occurrence index preserves even indistinguishable rows without treating
         # reservation number as a unique booking. Sort first for stable identities.
