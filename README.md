@@ -254,3 +254,24 @@ allowlist trong `cron/src/index.mjs` về `7,37 0-14,22-23 * * *`, phút `[7,37]
 cập nhật tests/manifest, kiểm tra targeted tests rồi deploy **cùng** Worker
 `bot-datsan-cron`. Chỉ sửa Cron trên Dashboard sẽ không đồng bộ validation.
 Giữ đúng một trigger; không bật GitHub native schedule, không reset D1/baseline.
+# Monitoring notification V2
+
+CLI monitoring dùng thông báo V2: mỗi scan COMPLETE có thay đổi hợp lệ tạo một
+SEND mới gồm sân mới/hết trống và danh sách ưu tiên từ chính scan đó. Không EDIT
+batch lịch sử cho thay đổi mới. Danh sách hiện tại có thể rút gọn rõ ràng; phần
+thay đổi luôn được giữ đủ và chia trang chỉ khi vượt giới hạn Telegram.
+
+Migration additive `0002_notification_v2.sql` thêm capability markers vào source
+và batches; không reset schema v1, dữ liệu hay QUIET baseline. Triển khai migration
+và Storage Worker tương thích trước khi đưa Python V2 lên main. Sau cutover,
+Storage chặn client V1 ghi hoặc claim job lịch sử; chỉ PENDING V1 được CANCELLED
+trong transaction cutover. SENT/FAILED/IN_FLIGHT/UNCERTAIN và receipt không bị xóa.
+Plan/runtime Python còn hỗ trợ version1 cho regression và dữ liệu cũ, nhưng CLI
+production luôn dùng version2. Không rollback sang sender V1 sau cutover.
+
+SEND V2 chưa claim nhưng đã qua scan mới không được phát với snapshot cũ: giữ
+PENDING và báo PARTIAL/unresolved để đối chiếu, không tự xóa hay resend. Receipt
+không rõ kết quả vẫn UNCERTAIN, chặn gửi tiếp theo như trước. Không replay
+transitions lịch sử để tạo thông báo.
+
+`/available`, `/priority`, Google Sheets và cả hai Cron giữ nguyên. Không booking.

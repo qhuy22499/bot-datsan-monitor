@@ -14,8 +14,8 @@ from .core import plan, key
 from .storage import D1Storage, StorageError
 
 
-def run_once(storage, collector, telegram, destination, *, clock=lambda: datetime.now(JST), baseline_mode="QUIET", max_sends=2):
-    if baseline_mode not in {"QUIET", "NOTIFY"} or type(max_sends) is not int or not 0 <= max_sends <= 2:
+def run_once(storage, collector, telegram, destination, *, clock=lambda: datetime.now(JST), baseline_mode="QUIET", max_sends=2, notification_version=1):
+    if notification_version not in {1,2} or baseline_mode not in {"QUIET", "NOTIFY"} or type(max_sends) is not int or not 0 <= max_sends <= (128 if notification_version==2 else 2):
         raise StorageError("INVALID_CONFIGURATION")
     destination = chat_id(destination)
     if not destination.startswith("-"):
@@ -51,7 +51,7 @@ def run_once(storage, collector, telegram, destination, *, clock=lambda: datetim
         checks = [notification_eligibility(s, calendar, now=clock(), observed_at=dict(scan.observations)[s.day])
                   for s in scan.slots if s.status == "AVAILABLE"]
         incomplete = sum(c["notification_eligibility"] == "DATA_INCOMPLETE" for c in checks)
-        prepared = plan(snapshot, scan, calendar, now=clock(), baseline_mode=baseline_mode)
+        prepared = plan(snapshot, scan, calendar, now=clock(), baseline_mode=baseline_mode, notification_version=notification_version)
         if snapshot["source"]["last_scan"] != prepared["scan"]["id"]:
             storage.call("commit", {**credentials, **prepared})
         result.update(status="PARTIAL" if incomplete else "COMPLETE", days=scan.days_read, cells=scan.slots_read,
@@ -65,7 +65,14 @@ def run_once(storage, collector, telegram, destination, *, clock=lambda: datetim
         for job in committed["jobs"]:
             if job["status"] != "PENDING" or (job["kind"] == "SEND" and result["sent"] >= max_sends):
                 continue
-            if job["kind"] == "SEND":
+            batch = next(b for b in committed['batches'] if b['id'] == job['batch_id'])
+            if notification_version == 2:
+                # Never replay old EDIT/SEND jobs or use a previous scan's list.
+                # A stale pending summary remains visible as unresolved for
+                # controlled reconciliation; it is not deleted or blindly sent.
+                if batch.get('notification_version',1) != 2 or job['kind'] != 'SEND' or batch['scan_id'] != prepared['scan']['id']:
+                    continue
+            if job["kind"] == "SEND" and notification_version == 1:
                 opps = {o["id"]: o for o in committed["opportunities"]}
                 rows = {s["id"]: s for s in committed["slots"]}
                 relevant = [rows[opps[m["opportunity_id"]]["slot_id"]] for m in committed["members"]
@@ -127,7 +134,8 @@ def main():
             from .collector import PublicCollector
             storage = D1Storage(os.environ.get("MONITOR_API_URL", ""), os.environ.get("MONITOR_API_SECRET", ""))
             adapter = TelegramBotAdapter(os.environ.get("TELEGRAM_BOT_TOKEN"), enabled=True)
-            report = run_once(storage, PublicCollector(), adapter, os.environ.get("TELEGRAM_TEST_CHAT_ID", ""), baseline_mode=args.baseline)
+            report = run_once(storage, PublicCollector(), adapter, os.environ.get("TELEGRAM_TEST_CHAT_ID", ""), baseline_mode=args.baseline,
+                              notification_version=2,max_sends=128)
         # Only counters, fixed codes, and safety flags; no IDs or payloads.
         print(json.dumps(report, ensure_ascii=True))
         return 0 if report["status"] in {"COMPLETE", "NOT_RUN"} else 2

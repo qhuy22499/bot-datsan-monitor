@@ -29,6 +29,12 @@ export async function startD1(persistPath) {
   const statements=readFileSync(new URL('../migrations/0001_monitor.sql',import.meta.url),'utf8')
     .replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
   await db.batch(statements.map(s=>db.prepare(s)));
+  const columns=await db.prepare('PRAGMA table_info(source)').all();
+  if(!columns.results.some(r=>r.name==='notification_version')) {
+    const additive=readFileSync(new URL('../migrations/0002_notification_v2.sql',import.meta.url),'utf8')
+      .replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
+    await db.batch(additive.map(s=>db.prepare(s)));
+  }
   return {db,async fetch(path,{body,headers={},now}) {
     return mf.dispatchFetch('https://storage.test'+path,{method:'POST',headers:{...headers,'X-Fixture-Clock':String(now)},body});
    },async close(){await mf.dispose();rmSync(directory,{recursive:true,force:true});}};

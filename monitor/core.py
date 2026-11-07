@@ -62,7 +62,8 @@ def render(batch, members, opportunities, slots, scan):
     return text
 
 
-def plan(snapshot, scan, calendar, *, now, baseline_mode="QUIET"):
+def plan(snapshot, scan, calendar, *, now, baseline_mode="QUIET", notification_version=1):
+    require(notification_version in {1, 2}, 'INVALID_NOTIFICATION_VERSION')
     require(scan.read_status == "COMPLETE" and baseline_mode in {"QUIET", "NOTIFY"}, "SOURCE_INCOMPLETE")
     require(0 <= (now - scan.finished_at).total_seconds() <= 300, "AVAILABILITY_DATA_STALE")
     source = snapshot["source"]
@@ -119,6 +120,41 @@ def plan(snapshot, scan, calendar, *, now, baseline_mode="QUIET"):
                               "reason": "AVAILABLE", "created_scan": sid, "updated_at": iso_time(now)}
         fresh_ids.append(oid)
     quiet_initial = source["baseline"] is None and baseline_mode == "QUIET"
+    if notification_version == 2:
+        from .notifications_v2 import interesting, current_slots, pages
+        fresh = {opportunities[oid]['slot_id']: oid for oid in fresh_ids}
+        changes = []
+        if not quiet_initial:
+            for slot in sorted(scan.slots, key=lambda s: (s.day, s.start, s.court)):
+                ident = slot_id(slot)
+                prior = old_slots.get(ident)
+                if not interesting(slot, calendar, observations, now):
+                    continue
+                if slot.status == 'AVAILABLE' and ident in fresh and (
+                        prior is None or not prior['in_scope'] or prior['status'] != 'AVAILABLE'):
+                    changes.append(('new', slot))
+                elif slot.status != 'AVAILABLE' and prior and prior['in_scope'] and prior['status'] == 'AVAILABLE':
+                    changes.append(('lost', slot))
+        new_batches, new_members, jobs = [], [], []
+        if changes:
+            for page, (items, text) in enumerate(pages(changes, current_slots(scan, calendar, now),
+                                                     min(observations.values()))):
+                bid = key('notification-v2', sid, page)
+                new_batches.append({'id': bid, 'kind': 'INCREMENTAL', 'revision': 1,
+                    'message_id': None, 'scan_id': sid, 'notification_version': 2})
+                for kind, slot in items:
+                    oid = fresh.get(slot_id(slot))
+                    if kind == 'new' and oid and oid not in old_members:
+                        new_members.append({'opportunity_id': oid, 'batch_id': bid,
+                            'ordinal': 1 + sum(m['batch_id'] == bid for m in new_members), 'delivery': 'PENDING'})
+                jobs.append({'id': key(bid, 1, 'SEND'), 'batch_id': bid,
+                             'revision': 1, 'kind': 'SEND', 'text': text})
+        return {'expected_revision': source['revision'], 'scan': meta,
+            'baseline': source['baseline'] or baseline_mode, 'notification_version': 2,
+            'slots': [r for ident, r in slots.items() if r['in_scope'] or old_slots.get(ident) != r],
+            'opportunities': [r for oid, r in opportunities.items() if old_opps.get(oid) != r],
+            'batches': new_batches, 'members': new_members, 'jobs': jobs, 'transitions': transitions,
+            'execution_allowed': False, 'auto_booking_allowed': False}
     if not quiet_initial:
         # Stable chronological ordering is for display only, never auto booking.
         fresh_ids.sort(key=lambda oid: (opportunities[oid]["slot_id"]))

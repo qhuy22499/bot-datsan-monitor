@@ -42,7 +42,8 @@ async function atomic(db,p,now,commands,revision=null) {
   }
 }
 function validatePlan(p,now) {
-  keys(p,'owner,fence,expected_revision,scan,baseline,slots,opportunities,batches,members,jobs,transitions,execution_allowed,auto_booking_allowed');
+  keys(p,'owner,fence,expected_revision,scan,baseline,slots,opportunities,batches,members,jobs,transitions,execution_allowed,auto_booking_allowed'+(Object.hasOwn(p,'notification_version')?',notification_version':''));
+  const version=p.notification_version ?? 1;need(version===1 || version===2);
   lease(p);need(integer(p.expected_revision) && p.execution_allowed===false && p.auto_booking_allowed===false);
   need(['QUIET','NOTIFY'].includes(p.baseline));
   const s=p.scan;keys(s,'id,started_at,finished_at,status,reason,window_start,window_end,days,cells');
@@ -58,7 +59,7 @@ function validatePlan(p,now) {
   need(s.window_start===s.started_at.slice(0,10) && s.window_start===s.finished_at.slice(0,10));
   need((Date.parse(s.window_end)-Date.parse(s.window_start))/86400000+1===s.days);
   need(startedMs<=finishedMs && finishedMs<=now && now-startedMs<=300000);
-  const limits={slots:8192,opportunities:4096,batches:128,members:1024,jobs:128,transitions:8192};
+  const limits={slots:8192,opportunities:4096,batches:128,members:version===2?4096:1024,jobs:128,transitions:8192};
   for (const [name,max] of Object.entries(limits)) need(Array.isArray(p[name]) && p[name].length<=max);
   const unique=new Set();let active=0;
   for (const r of p.slots) {
@@ -81,16 +82,18 @@ function validatePlan(p,now) {
     need(['AVAILABLE','OUT_OF_SCOPE','STARTED','SOURCE_NOT_AVAILABLE'].includes(r.reason));
   }
   for (const r of p.batches) {
-    keys(r,'id,kind,revision,message_id,scan_id');rowid(r.id);rowid(r.scan_id);
+    keys(r,'id,kind,revision,message_id,scan_id'+(Object.hasOwn(r,'notification_version')?',notification_version':''));rowid(r.id);rowid(r.scan_id);
+    need((r.notification_version ?? 1)===version);
     need(['INITIAL','INCREMENTAL'].includes(r.kind) && integer(r.revision,1) && (r.message_id===null || integer(r.message_id,1)));
   }
   for (const r of p.members) {
     keys(r,'opportunity_id,batch_id,ordinal,delivery');rowid(r.opportunity_id);rowid(r.batch_id);
-    need(integer(r.ordinal,1,24) && r.delivery==='PENDING');
+    need(integer(r.ordinal,1,version===2?128:24) && r.delivery==='PENDING');
   }
   for (const r of p.jobs) {
     keys(r,'id,batch_id,revision,kind,text');rowid(r.id);rowid(r.batch_id);
     need(integer(r.revision,1) && ['SEND','EDIT'].includes(r.kind) && typeof r.text==='string' && r.text.length>0 && r.text.length<=4096);
+    if(version===2)need(r.kind==='SEND' && r.revision===1 && p.batches.some(b=>b.id===r.batch_id && b.scan_id===s.id && b.message_id===null));
   }
   for (const r of p.transitions) {
     keys(r,'id,slot_id,scan_id,old_status,new_status,reason');rowid(r.id);rowid(r.scan_id);
@@ -147,6 +150,9 @@ async function command(name,p,db,now) {
   }
   if (name==='commit') {
     validatePlan(p,now);const s=p.scan;
+    const version=p.notification_version ?? 1;
+    const currentVersion=await db.prepare('SELECT notification_version FROM source WHERE id=1').first();
+    need(version>=currentVersion.notification_version,'NOTIFICATION_VERSION_MISMATCH',409);
     const commands=[db.prepare('INSERT INTO scans VALUES(?,?,?,?,?,?,?,?,?,?)').bind(s.id,s.started_at,s.finished_at,s.status,s.reason,s.window_start,s.window_end,s.days,s.cells,p.fence)];
     // A quiet baseline cannot be silently changed by a later job.
     commands.push(db.prepare("INSERT INTO atomic_guard VALUES(?,CASE WHEN (SELECT baseline FROM source WHERE id=1) IS NULL OR (SELECT baseline FROM source WHERE id=1)=? THEN 1 ELSE 0 END)").bind(crypto.randomUUID(),p.baseline));
@@ -159,12 +165,14 @@ async function command(name,p,db,now) {
     const upsert='ON CONFLICT(id) DO UPDATE SET state=excluded.state,reason=excluded.reason,updated_at=excluded.updated_at';
     commands.push(bulk('opportunities',oc,p.opportunities,upsert,"json_extract(value,'$.state')<>'ACTIVE'"));
     commands.push(bulk('opportunities',oc,p.opportunities,upsert,"json_extract(value,'$.state')='ACTIVE'"));
-    commands.push(bulk('batches',['id','kind','revision','message_id','scan_id'],p.batches,'ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,scan_id=excluded.scan_id'));
+    commands.push(bulk('batches',['id','kind','revision','message_id','scan_id','notification_version'],p.batches.map(r=>({...r,notification_version:version})),'ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,scan_id=excluded.scan_id'));
+    if(version===2)commands.push(db.prepare("UPDATE jobs SET status='CANCELLED' WHERE status='PENDING' AND EXISTS(SELECT 1 FROM batches b WHERE b.id=jobs.batch_id AND b.notification_version=1)"));
     commands.push(db.prepare("UPDATE jobs SET status='CANCELLED' WHERE status='PENDING' AND EXISTS(SELECT 1 FROM batches b WHERE b.id=jobs.batch_id AND b.revision>jobs.revision)"));
     commands.push(bulk('members',['opportunity_id','batch_id','ordinal','delivery'],p.members));
     commands.push(bulk('jobs',['id','batch_id','revision','kind','status','text'],p.jobs.map(r=>({...r,status:'PENDING'}))));
     commands.push(bulk('transitions',['id','slot_id','scan_id','old_status','new_status','reason'],p.transitions));
     commands.push(db.prepare('UPDATE source SET revision=revision+1,transition_count=transition_count+?,baseline=coalesce(baseline,?),last_scan=?,last_status=\'COMPLETE\',last_success=?,last_error=NULL WHERE id=1').bind(p.transitions.length,p.baseline,s.id,s.finished_at));
+    commands.push(db.prepare('UPDATE source SET notification_version=? WHERE id=1').bind(version));
     await atomic(db,p,now,commands,p.expected_revision);return {committed:true};
   }
   if (name==='claim') {
@@ -173,6 +181,9 @@ async function command(name,p,db,now) {
       WHERE id=? AND status='PENDING'
       AND NOT EXISTS(SELECT 1 FROM jobs WHERE status IN ('IN_FLIGHT','UNCERTAIN'))
       AND EXISTS(SELECT 1 FROM batches b WHERE b.id=jobs.batch_id AND b.revision=jobs.revision AND ((jobs.kind='SEND' AND b.message_id IS NULL) OR (jobs.kind='EDIT' AND b.message_id IS NOT NULL)))
+      AND EXISTS(SELECT 1 FROM source s JOIN batches b ON b.id=jobs.batch_id JOIN scans c ON c.id=b.scan_id
+        WHERE s.id=1 AND b.notification_version=s.notification_version
+        AND (s.notification_version=1 OR (jobs.kind='SEND' AND b.scan_id=s.last_scan AND unixepoch(c.finished_at)*1000>=?)))
       AND EXISTS(SELECT 1 FROM source WHERE last_status='COMPLETE')
       AND EXISTS(SELECT 1 FROM lease WHERE id=1 AND expires>?)
       AND (kind='EDIT' OR NOT EXISTS(
@@ -180,7 +191,7 @@ async function command(name,p,db,now) {
         WHERE m.batch_id=jobs.batch_id AND (o.state<>'ACTIVE' OR s.status<>'AVAILABLE' OR s.in_scope<>1
           OR unixepoch(s.observed_at)*1000<? OR unixepoch(s.observed_at)*1000>?
           OR s.day||'T'||s.start<=strftime('%Y-%m-%dT%H:%M',?/1000,'unixepoch','+9 hours'))))
-      RETURNING *`).bind(p.owner,p.fence,now,p.job_id,now+30000,now-300000,now,now)];
+      RETURNING *`).bind(p.owner,p.fence,now,p.job_id,now-300000,now+30000,now-300000,now,now)];
     const r=await atomic(db,p,now,commands);
     const job=r[1].results[0] || null;
     if (job) job.message_id=(await db.prepare('SELECT message_id FROM batches WHERE id=?').bind(job.batch_id).first()).message_id;

@@ -7,6 +7,8 @@ export class LocalD1 {
     this.sql=new DatabaseSync(path);this.sql.exec('PRAGMA foreign_keys=ON');
     this.migration=readFileSync(new URL('../migrations/0001_monitor.sql',import.meta.url),'utf8');
     this.sql.exec(this.migration);
+    if(!this.sql.prepare('PRAGMA table_info(source)').all().some(r=>r.name==='notification_version'))
+      this.sql.exec(readFileSync(new URL('../migrations/0002_notification_v2.sql',import.meta.url),'utf8'));
   }
   withSession(mode) {if(mode!=='first-primary')throw Error('SESSION');return this;}
   prepare(sql) {

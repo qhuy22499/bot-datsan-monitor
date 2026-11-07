@@ -37,6 +37,8 @@ test('workerd/D1 local: migration, commit, concurrency, receipt, rollback, lease
   const migration=readFileSync(new URL('../migrations/0001_monitor.sql',import.meta.url),'utf8').replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
   await db.batch(migration.map(s=>db.prepare(s)));
   await db.batch(migration.map(s=>db.prepare(s)));
+  const additive=readFileSync(new URL('../migrations/0002_notification_v2.sql',import.meta.url),'utf8').replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
+  await db.batch(additive.map(s=>db.prepare(s)));
   const call=async(name,p)=>{
    const response=await mf.dispatchFetch('https://storage.test/v1/'+name,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SECRET},body:JSON.stringify(p)});
    return {http:response.status,...await response.json()};
