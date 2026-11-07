@@ -23,5 +23,22 @@ class WeeklyRuntime(unittest.TestCase):
     def test_sheets_only_does_not_enter_weekly_path(self):
         with patch.dict(os.environ,{'BOOKING_SHEETS_ONLY':'true'}),patch('booking.runtime.sync_booked',return_value={'status':'SKIPPED'}),patch('booking.runtime.send_weekly',side_effect=AssertionError('NO_WEEKLY')),patch('builtins.print'):
             self.assertEqual(main(),0)
+    def test_proof_read_from_event_not_step_env_and_fixed_authenticated_payload(self):
+        import io,json,tempfile
+        from pathlib import Path
+        class Opener:
+            def open(self,request,timeout):
+                self.request=request
+                return io.BytesIO(b'{"status":"SENT","messageId":88}')
+        opener=Opener()
+        with tempfile.TemporaryDirectory() as temp:
+            path=Path(temp)/'event.json';path.write_text(json.dumps({'inputs':{'trigger_signature':'a'*64}}),encoding='utf-8')
+            with patch.dict(os.environ,{'GITHUB_EVENT_PATH':str(path),'BOOKED_SYNC_SECRET':'offline_test_only_weekly_auth'}),patch('booking.runtime.weekly_candidate',return_value=True):
+                out=send_weekly('cfbooking-1234567890000',{'status':'FAILED'},opener=opener)
+        self.assertEqual(out['status'],'SENT')
+        payload=json.loads(opener.request.data)
+        self.assertEqual(set(payload),{'trigger_id','signature','sheets_status'})
+        self.assertEqual(payload['signature'],'a'*64);self.assertEqual(payload['sheets_status'],'FAILED')
+        self.assertTrue(opener.request.full_url.endswith('/booked/weekly'))
 
 if __name__=='__main__':unittest.main()

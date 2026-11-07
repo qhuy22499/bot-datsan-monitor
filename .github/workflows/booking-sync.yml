@@ -38,7 +38,6 @@ jobs:
       - name: Three isolated group sessions then BOOKED replacement
         env:
           BOOKING_TRIGGER_ID: ${{ inputs.trigger_id }}
-          BOOKING_TRIGGER_SIGNATURE: ${{ inputs.trigger_signature }}
           BOOKING_SHEETS_ONLY: ${{ inputs.sheets_only }}
           BOOKING_GROUP_A_LOGIN_ID: ${{ secrets.BOOKING_GROUP_A_LOGIN_ID }}
           BOOKING_GROUP_A_PASSWORD: ${{ secrets.BOOKING_GROUP_A_PASSWORD }}

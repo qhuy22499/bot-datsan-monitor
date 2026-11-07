@@ -15,7 +15,8 @@ isolated SQLite DO table on the existing AVAILABLE-v1 singleton, not business D1
 
 Daily 08:30 Booking Cron is unchanged. Cron now signs its exact trigger ID using
 `BOOKING_CRON_SIGNING_SECRET` (Cron + Sheets Worker Secrets ONLY, not GitHub).
-The signature passes through workflow input/env to the authenticated weekly API.
+The signature passes through workflow input and the runner-local event JSON to
+the authenticated weekly API; it is not put in step env/public Actions logs.
 Blank-signature manual runs, other weekdays and sheets_only never auto-send.
 Worker checks HMAC, Monday JST including Sunday UTC, exact scheduled time, existing
 matching D1 run and all three terminal attempts, current group results and released

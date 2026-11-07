@@ -37,7 +37,15 @@ def weekly_candidate(trigger,signature,*,now=None,sheets_only=False):
     except (ValueError,OverflowError,OSError):return False
 
 def send_weekly(trigger,sheets,*,opener=None):
-    signature=os.environ.get('BOOKING_TRIGGER_SIGNATURE','')
+    # Read the signed event artifact locally; putting a proof in step env
+    # would echo it in public Actions logs before application logging starts.
+    signature=''
+    try:
+        from pathlib import Path
+        event=Path(os.environ['GITHUB_EVENT_PATH'])
+        if event.stat().st_size<=100000:
+            signature=json.loads(event.read_text(encoding='utf-8')).get('inputs',{}).get('trigger_signature','')
+    except Exception:pass
     if not weekly_candidate(trigger,signature):return {'status':'SKIPPED','code':'NOT_SCHEDULED_MONDAY'}
     try:
         secret=os.environ['BOOKED_SYNC_SECRET']

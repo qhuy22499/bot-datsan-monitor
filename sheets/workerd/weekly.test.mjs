@@ -36,7 +36,7 @@ test('actual DO/D1: historical receipts, command dedup, Monday proof, restart un
     }};
   let sends=0;
   const convert=o=>miniflare.convertV4MiniflareOptions?miniflare.convertV4MiniflareOptions(o):o;
-  mf=new miniflare.Miniflare(convert(options));const db=await mf.getD1Database('DB');
+  mf=new miniflare.Miniflare(convert(options));let db=await mf.getD1Database('DB');
   for(const name of ['0001_monitor.sql','0002_notification_v2.sql','0003_bookings.sql']){
     const sql=readFileSync(new URL('../../worker/migrations/'+name,import.meta.url),'utf8').replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
     await db.batch(sql.map(s=>db.prepare(s)));
@@ -58,6 +58,7 @@ test('actual DO/D1: historical receipts, command dedup, Monday proof, restart un
   const input={trigger_id:trigger,signature,sheets_status:'FAILED'},auth={Authorization:'Bearer '+secret};
   assert.equal((await (await post('/booked/weekly',input,auth)).json()).status,'SENT');assert.equal(sends,2);
   await mf.setOptions(convert({...options,bindings:{...options.bindings,TEST_EPOCH:'restart'}}));
+  db=await mf.getD1Database('DB'); // Old runtime stubs are intentionally poisoned on restart.
   assert.equal((await (await post('/booked/weekly',input,auth)).json()).status,'SENT');assert.equal(sends,2);
   const receipts=await(await post('/booked/receipts',{},auth)).json();
   assert.equal(receipts.inbox.find(r=>r.updateId===1).messageId,10);assert.equal(receipts.inbox.find(r=>r.updateId===2).command,'bookings_current');

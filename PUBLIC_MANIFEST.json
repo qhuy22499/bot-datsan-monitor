@@ -77,10 +77,10 @@
     "tests/test_notification_v2.py": "bb8845d7fcf3966d4ce9d7896537dddb8a49fd1215f372f08465034512ae68f7",
     "worker/migrations/0002_notification_v2.sql": "3bb46de3ada350ec79b42aafa7595086b7e376c8639490c6ebd20913cd9cd676",
     "booking/fields.py": "e570108fe238d11f9e347062df19a1353ef47bcde262d9db1d75a6449c24eb95",
-    "booking/runtime.py": "ec665763c0b1ad5607d7df0e674382ae0644793bd0e49c5cbf3c79892775b75a",
+    "booking/runtime.py": "b0e4ed3f6febf19d3c651afad9ec3aef7f7cae066aacaee885416696822a85bd",
     "sheets/test/booked.test.mjs": "7b0753ddfca845a0cfc498073672227817548f0d107599adeae629ef686d23cc",
     "worker/src/bookings.mjs": "133acb646ca73c9905c414886421ca1e3ac1101dca9e52a576d87c184c8abb27",
-    ".github/workflows/booking-sync.yml": "93c7abbdd57c2ef2307162a8dd2a4e5137488c27161a49b781c6fea76b356852",
+    ".github/workflows/booking-sync.yml": "0d0c8003cd0a0f2a5b2c3fa69f9ce97bc66000c02f9de1da5aec647712abf1f5",
     "booking/login_probe.js": "7172e08e8ef6b7a55c6d2efd41245bcde0ccc3d832c689077ed0f8c1928a9195",
     "booking/PROVENANCE.json": "2560d4bebe8bd7f6010471cb3d2a8de74849f2993b0fbce5fa050a4a0ca39ab5",
     "worker/migrations/0003_bookings.sql": "55bbbb8129802155762d8aeeaf6a29f38b942d58f3861dfcac84658e18c6efaf",
@@ -93,11 +93,11 @@
     "booking/collector.py": "63caa247d05f4407bdca1e4655503602ed8e8a05239e3e4ce18e7b80bd4db63a",
     "sheets/src/booked.mjs": "c7885081887106b6a830638dbb870b408b87605e35c14211456ca8e2a42ad114",
     "booking/oracle.js": "0b375f06d1d4fd9faf6e3f6124d49755e7caac3a72fe2cb516c9214b89a5d7bc",
-    "tests/test_weekly_runtime.py": "89713b817ace415e62db16f9292b93faf133de643ed0fabff2ee79b47d331229",
+    "tests/test_weekly_runtime.py": "bc02bdbce40274315a1a01faa625249263885599d40a19ab84f4233aecb9a1a0",
     "sheets/src/weekly.mjs": "8cd8292c97fa12061b37ac62bc23190aa895729ab640da3ce24ac8be2ba1dc88",
     "sheets/src/bookings-message.mjs": "59c3a27b271fd4ec3210b1f3696ee6991e549d27bb111b8bb394d9e576f02a4a",
     "sheets/test/bookings-weekly.test.mjs": "9bc32c90770fbeeaf57d5259bcd2c48cea650024f7aee78ce1dad6cae00c5dbc",
-    "sheets/workerd/weekly.test.mjs": "956353908880cc48c9151db0c478c295c8004458949faf87455a86d85ccfd340",
-    "booking/WEEKLY.md": "ddf4465974f25344b046dcd01b2e61ef4575c42c3aa929deccff613340fab7c0"
+    "sheets/workerd/weekly.test.mjs": "d64f4d513df5f051d5d3dc2a7fa2e61b54d5df6a11c85119a84a2d8302c922d2",
+    "booking/WEEKLY.md": "91942e73e724b8e804b85c2457135005ba08c875d3d8eacc4df6afed2b230e52"
   }
 }
